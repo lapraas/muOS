@@ -1,5 +1,6 @@
 
 import asyncio
+#from solos import printNLP
 from typing import Coroutine, Union
 import datetime as dt
 import discord
@@ -49,8 +50,11 @@ async def on_ready():
 async def on_message(message: discord.Message):
     if message.author == client.user:
         return
-    
-    await client.process_commands(message)
+    if message.author.bot:
+        print(f"[{str(dt.datetime.now().time())[:-7]}, #{message.channel.name}] {message.author.name}: {message.content}")
+        #printNLP(message.content)
+    else:
+        await client.process_commands(message)
 
 @client.event
 async def on_reaction_add(reaction: discord.Reaction, user: Union[discord.User, discord.Member]):
