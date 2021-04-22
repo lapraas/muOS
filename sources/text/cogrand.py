@@ -1,5 +1,5 @@
 
-from sources.general import BOT_PREFIX as mew, Cmd
+from sources.general import BOT_PREFIX as mew, Cmd, NEWLINE
 
 class COG:
     NAME = "Random Cog"
@@ -29,5 +29,7 @@ class ERR:
     INVALID_SUBCOMMAND = lambda args: f"The entry `{args}` is invalid."
     BAD_DICE_FORMAT = lambda arg: f"The entry `{arg}` isn't a valid die. Format it like `4d6`, where `4` is the dice count and `6` is the number of sides on each die."
 
+_separator = "\n  "
 class INFO:
-    ROLL = lambda rolls: "\n".join([f"{arg}: {', '.join(rolls[arg])}" for arg in rolls])
+    TOO_MANY_DICE = lambda entry: f"The entry `{entry}` would roll too many dice!"
+    ROLL = lambda rolls: "```" + "\n\n".join([f"Rolling {arg}:{_separator}{_separator.join(rolls[arg])}" for arg in rolls]) + "```"

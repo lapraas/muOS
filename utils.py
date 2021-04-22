@@ -15,7 +15,7 @@ class Fail(Exception):
         super().__init__(message)
         self.message = message
 
-def rotateAvatarImage():
+def getRandomAvatarImageAndTime():
     with open(U.PATHS.AVATAR_ROTATION, "r") as f:
         rotation: dict[str, list[str]] = json.load(f)
     if not rotation.get("unused"):
@@ -40,9 +40,10 @@ def getEmbed(title: str, description: str=None, fields: list[Union[tuple[str, st
     e = discord.Embed(
         title=title,
         description=stripLines(description),
-        color=0x00C0FF,
-        url=url
+        color=0xD67AE2,
     )
+    if url:
+        e.url = url
     for field in fields:
         e.add_field(
             name=field[0],
@@ -55,7 +56,7 @@ def getEmbed(title: str, description: str=None, fields: list[Union[tuple[str, st
         e.set_footer(text=footer)
     return e
 
-def getVictinOSEmbed(title: str, description: str=None, fields: list[Union[tuple[str, str], tuple[str, str, bool]]]=None, imageURL: str=None, footer=None, url=None):
+def getMuOSEmbed(title: str, description: str=None, fields: list[Union[tuple[str, str], tuple[str, str, bool]]]=None, imageURL: str=None, footer=None, url=None):
     e = getEmbed(title, description, fields, imageURL, footer, url)
     e.set_thumbnail(url=MUOS_GRAPHIC_URL)
     return e

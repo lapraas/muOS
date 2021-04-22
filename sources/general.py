@@ -9,7 +9,7 @@ MENTION_ME = f"<@{IDS.MY_USER_ID}>"
 EMPTY = "\u200b"
 NEWLINE = "\n"
 
-MUOS_GRAPHIC_URL = "https://cdn.discordapp.com/attachments/284520081700945921/829501492939194378/bronzOS_logo.png"
+MUOS_GRAPHIC_URL = "https://cdn.discordapp.com/attachments/284520081700945921/834659148061736970/muOS-graphic.png"
 
 stripLines = lambda text: "\n".join([line.strip() for line in text.split("\n")])
 class Cmd:

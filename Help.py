@@ -1,6 +1,6 @@
 
 from typing import Callable, Mapping, Optional, Union
-from utils import getVictinOSEmbed, paginate
+from utils import getMuOSEmbed, paginate
 import discord
 from discord.ext import commands
 
@@ -19,7 +19,7 @@ class Help(commands.DefaultHelpCommand):
             if not cmds: continue
             pages.append({
                 "content": T.HELP.cogPaginationContent(cogNames, i),
-                "embed": getVictinOSEmbed(**T.HELP.cogEmbed(cog.qualified_name, cog.description, getNonhiddenCommands(cmds, lambda cmd: cmd.qualified_name)))
+                "embed": getMuOSEmbed(**T.HELP.cogEmbed(cog.qualified_name, cog.description, getNonhiddenCommands(cmds, lambda cmd: cmd.qualified_name)))
             })
         await paginate(self.context, pages, True)
     
@@ -29,7 +29,7 @@ class Help(commands.DefaultHelpCommand):
         for i, command in enumerate(cmds):
             pages.append({
                 "content": T.HELP.commandPaginationContent(parentName, commandNames, i, aliases),
-                "embed": getVictinOSEmbed(**T.HELP.commandEmbed(command.qualified_name, command.aliases, command.help))
+                "embed": getMuOSEmbed(**T.HELP.commandEmbed(command.qualified_name, command.aliases, command.help))
             })
         await paginate(self.context, pages, True)
     
@@ -40,7 +40,7 @@ class Help(commands.DefaultHelpCommand):
         await self.sendPaginatedHelp(group.qualified_name, getNonhiddenCommands(group.commands), group.aliases)
     
     async def send_command_help(self, command: commands.Command):
-        embed = getVictinOSEmbed(
+        embed = getMuOSEmbed(
             **T.HELP.commandEmbedWithFooter(command.qualified_name, command.aliases, command.help, command.cog_name)
         )
         await self.context.send(embed=embed)

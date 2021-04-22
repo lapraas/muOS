@@ -10,7 +10,7 @@ import sources.text as T
 
 R = T.RAND
 
-dicePat = re.compile(r"^\d+d\d+$")
+dicePat = re.compile(r"^(\d+)d(\d+)$")
 whitespacePat = re.compile(r"\s")
 
 class CogRand(commands.Cog, name=R.COG.NAME, description=R.COG.DESC):
@@ -27,7 +27,7 @@ class CogRand(commands.Cog, name=R.COG.NAME, description=R.COG.DESC):
         splitArgs = whitespacePat.split(args)
         match = dicePat.search(splitArgs[0])
         if match:
-            self.dice(ctx, splitArgs)
+            await self.dice(ctx, *splitArgs)
         elif not ctx.invoked_subcommand:
             raise Fail(R.ERR.INVALID_SUBCOMMAND(args))
     
@@ -43,5 +43,9 @@ class CogRand(commands.Cog, name=R.COG.NAME, description=R.COG.DESC):
                 raise Fail(R.ERR.BAD_DICE_FORMAT(arg))
             
             number, sides = match.groups()
-            rolls[arg] = [random.randint(1, sides) for _ in range(number)]
-        await ctx.send(R.INFO.ROLL(rolls))
+            rolls[arg] = [str(random.randint(1, int(sides))) for _ in range(int(number))]
+        res = R.INFO.ROLL(rolls)
+        if len(res) > 2000:
+            await ctx.send(R.INFO.TOO_MANY_DICE(" ".join(args)))
+            return
+        await ctx.send(res)

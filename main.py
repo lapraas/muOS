@@ -1,13 +1,15 @@
 
-from typing import Union
+import asyncio
+from typing import Coroutine, Union
 import datetime as dt
 import discord
 from discord.ext import commands, tasks
 import os
 
+from CogRand import CogRand
+from Help import Help
 from sources.general import BOT_PREFIX, MENTION_ME
 from utils import Fail, getRandomAvatarImageAndTime, handlePaginationReaction
-from Help import Help
 
 def determinePrefix(bot: commands.Bot, message: discord.Message):
     if isinstance(message.channel, discord.DMChannel):
@@ -22,20 +24,26 @@ client = commands.Bot(
     case_insensitive=True,
     help_command=Help(verify_checks=False)
 )
+cogRand = CogRand(client)
+client.add_cog(cogRand)
 
 @tasks.loop(hours=24 * 2)
 async def changeAvatar():
     print("Changing avatar")
-    return
     im = getRandomAvatarImageAndTime()
     await client.user.edit(avatar=im)
 
 @client.event
 async def on_ready():
     print(f"Logged in as {client.user}.")
-    now = dt.datetime.today()
+    now = dt.datetime.now()
     then = now.replace(day=now.day + now.day % 2, hour=0, minute=0, second=0, microsecond=0)
-    changeAvatar.next_iteration = then
+    if now > then:
+        then = then.replace(day=then.day + 2)
+    print(f"Next profile picture change:\n  {then}")
+    
+    await asyncio.sleep((then - now).total_seconds())
+    changeAvatar.start()
 
 @client.event
 async def on_message(message: discord.Message):
@@ -69,7 +77,8 @@ async def on_command_error(ctx: commands.Context, error: commands.CommandError):
     else:
         toSend += f"An unexpected error occurred. Please let {MENTION_ME} know."
         toRaise = error
-    toSend += f"\nIf you need help with this command, please use `{BOT_PREFIX}help {ctx.command.name}`."
+    if ctx.command:
+        toSend += f"\nIf you need help with this command, please use `{BOT_PREFIX}help {ctx.command.name}`."
     await ctx.send(toSend)
     if toRaise:
         raise toRaise
@@ -80,4 +89,4 @@ async def globalCheck(ctx: commands.Context):
     print(f"[{str(dt.datetime.now().time())[:-7]}, #{channelName}] {ctx.message.author.name}: {ctx.message.content}")
     return True
 
-client.run(os.getenv("DISCORD_SECRET_BRONZOS"))
+client.run(os.getenv("DISCORD_SECRET_MUOS"))
