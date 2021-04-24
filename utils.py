@@ -18,10 +18,10 @@ class Fail(Exception):
 
 def getRandomAvatarImageAndTime():
     with open(U.PATHS.AVATAR_ROTATION, "r") as f:
-        rotation: dict[str, list[str]] = json.load(f)
+        rotation: dict[str, list[tuple[str, str]]] = json.load(f)
     if not rotation.get("unused"):
         rotation["unused"] = list(U.PATHS.AVATARS.items())
-    if rotation.get("current"):
+    if rotation.get("current") in rotation["unused"]:
         rotation["unused"].remove(rotation.get("current"))
 
     path = random.choice(rotation["unused"])
@@ -29,7 +29,7 @@ def getRandomAvatarImageAndTime():
     rotation["current"] = path
     with open(U.PATHS.AVATAR_ROTATION, "w") as f:
         json.dump(rotation, f)
-    with open(path, "rb") as im:
+    with open(path[1], "rb") as im:
         return im.read()
 
 dashPat = re.compile(r"-")
