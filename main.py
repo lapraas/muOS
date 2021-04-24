@@ -7,10 +7,17 @@ import discord
 from discord.ext import commands, tasks
 import os
 
+from discord.ext.commands.core import Command
+
 from CogRand import CogRand
 from Help import Help
 from sources.general import BOT_PREFIX, MENTION_ME
 from utils import Fail, getRandomAvatarImageAndTime, handlePaginationReaction
+
+intents: discord.Intents = discord.Intents.default()
+intents.members = True
+intents.reactions = True
+intents.dm_reactions = True
 
 def determinePrefix(bot: commands.Bot, message: discord.Message):
     if isinstance(message.channel, discord.DMChannel):
@@ -23,7 +30,8 @@ def determinePrefix(bot: commands.Bot, message: discord.Message):
 client = commands.Bot(
     command_prefix=determinePrefix,
     case_insensitive=True,
-    help_command=Help(verify_checks=False)
+    help_command=Help(verify_checks=False),
+    intents=intents
 )
 cogRand = CogRand(client)
 client.add_cog(cogRand)
@@ -51,15 +59,28 @@ async def on_message(message: discord.Message):
     if message.author == client.user:
         return
     if message.author.bot:
+        """
         print(f"[{str(dt.datetime.now().time())[:-7]}, #{message.channel.name}] {message.author.name}: {message.content}")
-        #printNLP(message.content)
+        printNLP(message.content)
+        """
     else:
         await client.process_commands(message)
 
 @client.event
 async def on_reaction_add(reaction: discord.Reaction, user: Union[discord.User, discord.Member]):
     if user.bot: return
-    await handlePaginationReaction(reaction, user)
+    await handlePaginationReaction(reaction.message, reaction.emoji, user)
+
+@client.event
+async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
+    """
+    if not payload.message_id in [message.id for message in client.cached_messages]:
+        user = await client.fetch_user(payload.user_id)
+        channel = await client.fetch_channel(payload.channel_id)
+        message = await channel.fetch_message(payload.message_id)
+        await handlePaginationReaction(message, payload.emoji, user)
+    """
+
 
 @client.event
 async def on_command_error(ctx: commands.Context, error: commands.CommandError):
@@ -82,7 +103,7 @@ async def on_command_error(ctx: commands.Context, error: commands.CommandError):
         toSend += f"An unexpected error occurred. Please let {MENTION_ME} know."
         toRaise = error
     if ctx.command:
-        toSend += f"\nIf you need help with this command, please use `{BOT_PREFIX}help {ctx.command.name}`."
+        toSend += f"\nIf you need help with this command, please use `{BOT_PREFIX}help {ctx.command.qualified_name}`."
     await ctx.send(toSend)
     if toRaise:
         raise toRaise

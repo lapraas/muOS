@@ -35,3 +35,4 @@ class Cmd:
         self.refF = f"`{self.ref}`"
 
 _FORMAT = "%I:%M:%S%p, %b %d (%a), %Y"
+intable = lambda t: all([d in "1234567890-" for d in t])

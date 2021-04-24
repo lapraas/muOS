@@ -1,4 +1,5 @@
 
+import re
 import discord
 from discord.ext import commands
 import json
@@ -30,6 +31,24 @@ def getRandomAvatarImageAndTime():
         json.dump(rotation, f)
     with open(path, "rb") as im:
         return im.read()
+
+dashPat = re.compile(r"-")
+spacePat = re.compile(r"\s+")
+ePat = re.compile(r"e")
+def shuffleWord(word):
+    alphabet = "qwertyuiopasdfghjklzxcvbnm"
+    alphanum = "1234567890qwertyuiopasdfghjklzxcvbnm"
+    splits     = [(word[:i], word[i:]) for i in range(len(word) + 1)]
+    deletes    = [a + b[1:] for a, b in splits if b]
+    transposes = [a + b[1] + b[0] + b[2:] for a, b in splits if len(b)>1]
+    replaces   = [a + c + b[1:] for a, b in splits for c in alphabet if b]
+    inserts    = [a + c + b     for a, b in splits for c in alphabet]
+    shuffle = set(deletes + transposes + replaces + inserts)
+    shuffle.add("".join(let for let in word if let in alphanum))
+    shuffle.add(re.sub(dashPat, " ", word))
+    shuffle.add(re.sub(spacePat, "-", word))
+    shuffle.add(re.sub(ePat, "\u00e9", word)) # accented e (for flabebe)
+    return shuffle
 
 def getEmbed(title: str, description: str=None, fields: list[Union[tuple[str, str], tuple[str, str, bool]]]=None, imageURL: str=None, footer=None, url=None):
     """ Creates a custom embed. """
@@ -170,12 +189,12 @@ async def paginate(ctx: commands.Context, contents: list[dict[str, Union[str, di
     toListen[message.id] = paginator
     await updatePaginatedMessage(message, ctx.author, paginator)
 
-async def handlePaginationReaction(reaction: discord.Reaction, user: Union[discord.Member, discord.User]):
-    if not reaction.message.id in toListen:
+async def handlePaginationReaction(message: discord.Message, emoji: str, user: Union[discord.Member, discord.User]):
+    if not message.id in toListen:
         return
-    paginator = toListen[reaction.message.id]
+    paginator = toListen[message.id]
     
-    emoji = str(reaction.emoji)
-    await updatePaginatedMessage(reaction.message, user, paginator, emoji)
-    if not isinstance(reaction.message.channel, discord.DMChannel):
-        await reaction.remove(user)
+    emoji = str(emoji)
+    await updatePaginatedMessage(message, user, paginator, emoji)
+    if not isinstance(message.channel, discord.DMChannel):
+        await message.remove_reaction(emoji, user)
