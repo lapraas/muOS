@@ -11,6 +11,11 @@ EMPTY = "\u200b"
 NEWLINE = "\n"
 
 MUOS_GRAPHIC_URL = "https://cdn.discordapp.com/attachments/284520081700945921/834659148061736970/muOS-graphic.png"
+MUOS_GRAPHIC_URL_2 = "https://cdn.discordapp.com/attachments/284520081700945921/835412740871946261/mu_alt.png"
+MUOS_GRAPHIC_URL_3 = "https://cdn.discordapp.com/attachments/284520081700945921/835412799756173382/mu.png"
+MUOS_GRAPHIC_URL_4 = "https://cdn.discordapp.com/attachments/284520081700945921/835413757353394206/mu_alt3.png"
+
+GRAPHICS = [MUOS_GRAPHIC_URL, MUOS_GRAPHIC_URL_2, MUOS_GRAPHIC_URL_3, MUOS_GRAPHIC_URL_4]
 
 stripLines = lambda text: "\n".join([line.strip() for line in text.split("\n")])
 class Cmd:

@@ -6,7 +6,7 @@ import json
 import random
 from typing import Optional, Union
 
-from sources.general import EMPTY, MUOS_GRAPHIC_URL, stripLines
+from sources.general import EMPTY, GRAPHICS, MUOS_GRAPHIC_URL, stripLines
 import sources.text as T
 
 U = T.UTIL
@@ -77,7 +77,7 @@ def getEmbed(title: str, description: str=None, fields: list[Union[tuple[str, st
 
 def getMuOSEmbed(title: str, description: str=None, fields: list[Union[tuple[str, str], tuple[str, str, bool]]]=None, imageURL: str=None, footer=None, url=None):
     e = getEmbed(title, description, fields, imageURL, footer, url)
-    e.set_thumbnail(url=MUOS_GRAPHIC_URL)
+    e.set_thumbnail(url=random.choice(GRAPHICS))
     return e
 
 class Page:

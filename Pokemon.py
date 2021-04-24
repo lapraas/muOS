@@ -59,6 +59,8 @@ class Evolution:
 class Pokemon:
     def __init__(self, name: str, data: dict[str, Union[str, list[str], dict[str, str], dict[str, dict[str, Union[list[tuple[str, str]]], dict[str, tuple[str, str]]]]]]):
         self.name = name
+        if not data:
+            return
         self.id: str = data["id"]
         self.image: str = data["image"]
         self.types: list[str] = data["types"]

@@ -1,5 +1,6 @@
 
-from Pokemon import Dex, Pokedex, Pokemon
+from sources.pkmn import MISSINGNO
+from Pokemon import Dex, LearnedMove, METHODS, Pokedex, Pokemon
 from typing import Any, Callable, Generic, Optional, TypeVar, Union
 from utils import Fail, getMuOSEmbed, paginate, shuffleWord
 import discord
@@ -141,7 +142,10 @@ class CogRand(commands.Cog, name=R.COG.NAME, description=R.COG.DESC):
             await ctx.send(R.DEX_PKMN_NAME.desc)
             return
         
+
         pkmn = self.getPokemonByName(name)
+        if name.lower() == "missingno":
+            pkmn = MISSINGNO
         if pkmn:
             await self.sendPkmn(ctx, pkmn)
         else:
