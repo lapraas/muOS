@@ -4,7 +4,7 @@ import math
 from typing import Union
 
 from Pokemon import Evolution, LearnedMove, METHODS, Pokemon
-from sources.general import BOT_PREFIX as mew, Cmd, EMPTY, intable
+from sources.general import BOT_PREFIX as mew, Cmd, EMPTY, chunks, evenChunks, intable
 
 class COG:
     NAME = "Random Cog"
@@ -14,7 +14,7 @@ class PATH:
     TABLES = "./sources/tables.json"
     POKEDEX = "./sources/pokedex.json"
 
-RANDOM = Cmd(
+RAND = Cmd(
     "random", "rand", "r", "roll",
     f"""
         This is the base command for generating random things. See `{mew}help random` for ways to use this command.
@@ -29,7 +29,7 @@ RAND_DICE = Cmd(
         "4d6",
         "1d20"
     ],
-    parent=RANDOM
+    parent=RAND
 )
 RAND_PKMN = Cmd(
     "pokemon", "pkmn",
@@ -44,41 +44,67 @@ DEX = Cmd(
         This is the base command for getting info and lists pertaining to Pokemon and other things. See `{mew}help dex` for ways to use this command.
     """
 )
-POKEMON = Cmd(
+DEX_PKMN = Cmd(
     "pokemon", "pkmn", "pokedex",
     f"""
         This is a subcommand which will allow you to search for information about a specific Pokemon. See `{mew}help dex pokemon` for ways to use this command.
     """,
     parent=DEX
 )
-PKMN_NAME = Cmd(
+DEX_PKMN_NAME = Cmd(
     "name", "named",
     f"""
         This command will search for a Pokemon with a given name.
     """,
-    parent=POKEMON,
+    parent=DEX_PKMN,
     usage=[
-        "porygon",
+        "Porygon",
         "porgyon2",
         "porygon z"
     ]
 )
-PKMN_MOVE = Cmd(
+DEX_PKMN_MOVE = Cmd(
     "move", "learns", "knows",
     f"""
         This command will search for each Pokemon that can possibly learn a given move.
-    """
+    """,
+    parent=DEX_PKMN,
+    usage=[
+        "levitate",
+        "Trick room",
+        "tri-attack"
+    ]
+)
+DEX_PKMN_ABILITY = Cmd(
+    "ability", "has",
+    f"""
+        This command will search for each Pokemon that can possibly have a given ability.
+    """,
+    parent=DEX_PKMN,
+    usage=[
+        "torrent",
+        "intimidate"
+    ]
+)
+DEX_PKMN_TYPE = Cmd(
+    "type", "is",
+    f"""
+        This command will search for each Pokemon with a given type.
+    """,
+    usage=[
+        "dragon",
+        "normal"
+    ]
 )
 
-class ERR:
-    INVALID_SUBCOMMAND = lambda args: f"The entry `{args}` is invalid."
-    BAD_DICE_FORMAT = lambda arg: f"The entry `{arg}` isn't a valid die. Format it like `4d6`, where `4` is the dice count and `6` is the number of sides on each die."
-    BAD_POKEMON = lambda arg: f"The Pokemon specified, `{arg}`, wasn't found."
-
-_separator = "\n  "
-class INFO:
-    TOO_MANY_DICE = lambda entry: f"The entry `{entry}` would roll too many dice!"
-    ROLL = lambda rolls: "```" + "\n\n".join([f"Rolling {arg}:{_separator}{_separator.join(rolls[arg])}" for arg in rolls]) + "```"
+RAND_LAST = Cmd(
+    "last",
+    f"""
+        This command will fetch a random item from the list of things you last searched.
+        Try using this command after doing `{DEX_PKMN_MOVE.ref} agility`.
+    """,
+    parent=RAND
+)
 
 def GET_PKMN_EMBED(pkmn: Pokemon):
     return dict(
@@ -94,6 +120,20 @@ def GET_PKMN_EMBED(pkmn: Pokemon):
         ],
         url=f"https://pokemondb.net/pokedex/{pkmn.id}"
     )
+
+def GET_PKMN_LIST_PAGES(title: str, pkmnList: list[Pokemon]):
+    pkmnList = sorted(pkmnList, key=lambda pkmn: pkmn.dispName())
+    fields = [(EMPTY, "```\n"+"\n".join(pkmn.dispName() for pkmn in chunk) + "```", True) for chunk in chunks(pkmnList, 10)]
+    pages = []
+    for chunk in chunks(fields, 3):
+        embed = dict(
+            title=title,
+            description=f"{len(pkmnList)} results",
+            fields=chunk
+        )
+        pages.append(embed)
+    return pages
+
 
 def GET_PKMN_PAGES(pkmn: Pokemon):
     baseEmbed = GET_PKMN_EMBED(pkmn)
@@ -146,9 +186,8 @@ def addMovesetField(title: str, moves: list[LearnedMove]):
         sortedMoves = sorted(moves, key=lambda move: int(move.getFirstNum()))
     else:
         sortedMoves = sorted(moves, key=lambda move: move.getName())
-    n = math.ceil(len(sortedMoves)/3)
     bodies = []
-    for chunk in [sortedMoves[i:i + n] for i in range(0, len(sortedMoves), n)]:
+    for chunk in evenChunks(sortedMoves):
         bodyStr = "```\n"
         for move in chunk:
             bodyStr += f"{move.dispName()}\n"
@@ -157,3 +196,22 @@ def addMovesetField(title: str, moves: list[LearnedMove]):
     ret = [[EMPTY, bodyStr, True] for bodyStr in bodies]
     ret[0][0] = title
     return ret
+
+_not_found = lambda thing: lambda realThing: f"The {thing} `{realThing}` didn't match for any Pokemon."
+class ERR:
+    INVALID_SUBCOMMAND = lambda args: f"The entry `{args}` is invalid."
+    BAD_DICE_FORMAT = lambda arg: f"The entry `{arg}` isn't a valid die. Format it like `4d6`, where `4` is the dice count and `6` is the number of sides on each die."
+    BAD_POKEMON = lambda arg: f"The Pokemon specified, `{arg}`, wasn't found."
+    NO_LAST = f"You haven't used a dex command since the bot has been restarted!"
+    MOVE_NOT_FOUND = _not_found("move")
+    ABILITY_NOT_FOUND = _not_found("ability")
+    TYPE_NOT_FOUND = _not_found("type")
+
+_separator = ", "
+_title = lambda thing: lambda realThing: f"Pokemon with the {thing} `{realThing}`"
+class INFO:
+    TOO_MANY_DICE = lambda entry: f"The entry `{entry}` would roll too many dice!"
+    ROLL = lambda rolls: "```" + "\n\n".join([f"Rolling {arg}:\n{_separator.join(rolls[arg])}" for arg in rolls]) + "```"
+    DEX_PKMN_MOVE_TITLE = _title("move")
+    DEX_PKMN_ABILITY_TITLE = _title("ability")
+    DEX_PKMN_TYPE_TITLE = _title("type")

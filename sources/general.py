@@ -1,5 +1,6 @@
 
 from __future__ import annotations
+import math
 from typing import Optional, Union
 import sources.ids as IDS
 
@@ -36,3 +37,9 @@ class Cmd:
 
 _FORMAT = "%I:%M:%S%p, %b %d (%a), %Y"
 intable = lambda t: all([d in "1234567890-" for d in t])
+
+def chunks(lst: list, n: int):
+    return [lst[i:i + n] for i in range(0, len(lst), n)]
+
+def evenChunks(lst: list, n: int=3):
+    return chunks(lst, math.ceil(len(lst)/n))

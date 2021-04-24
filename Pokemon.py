@@ -1,5 +1,5 @@
 
-from typing import Optional, Union
+from typing import Callable, Generic, Optional, TypeVar, Union
 
 class Move:
     def __init__(self, name: str):
@@ -93,13 +93,21 @@ class Pokemon:
                 return
         self.moves.append(LearnedMove(name, gen, method, num))
 
-
+    def hasType(self, typ: str):
+        return typ in self.types
     def getImage(self):
         return self.image
     def getEvolutions(self):
         return self.evolutions
+    def hasAbility(self, ability: str):
+        return ability in self.abilities + [self.hiddenAbility]
     def hasHiddenAbility(self):
         return self.hiddenAbility != "NONE"
+    def getMove(self, name: str):
+        for move in self.moves:
+            if move.name == name:
+                return move
+        return False
     
     def dispName(self):
         return self.name.title()
@@ -117,15 +125,30 @@ class Pokemon:
                 moves.append(move)
         return moves
 
-class Pokedex:
-    def __init__(self, data: dict[str, dict[str, Union[str, list[str], dict[str, str], dict[str, dict[str, Union[list[tuple[str, str]]], dict[str, tuple[str, str]]]]]]]):
-        self.pkmn = {}
-
-        for name in data:
-            self.pkmn[name] = Pokemon(name, data[name])
+T = TypeVar("T")
+class Dex(Generic[T]):
+    items: dict[str, T]
+    def __init__(self, data: dict):
+        self.items = {}
+        self.build(data)
+    
+    def build(self, data: dict):
+        pass
     
     def get(self, name: str):
-        return self.pkmn.get(name)
+        return self.items.get(name)
     
     def getAllNames(self):
-        return list(self.pkmn.keys())
+        return list(self.items.keys())
+    
+    def collect(self, key: Callable[[T], bool]):
+        collected: list[T] = []
+        for itemName in self.items:
+            if key(self.items[itemName]):
+                collected.append(self.items[itemName])
+        return collected
+
+class Pokedex(Dex[Pokemon]):
+    def build(self, data: dict[str, dict[str, Union[str, list[str], dict[str, str], dict[str, dict[str, Union[list[tuple[str, str]]], dict[str, tuple[str, str]]]]]]]):
+        for name in data:
+            self.items[name] = Pokemon(name, data[name])

@@ -1,6 +1,6 @@
 
-from Pokemon import Pokedex, Pokemon
-from typing import Optional, Union
+from Pokemon import Dex, Pokedex, Pokemon
+from typing import Any, Callable, Generic, Optional, TypeVar, Union
 from utils import Fail, getMuOSEmbed, paginate, shuffleWord
 import discord
 from discord.ext import commands
@@ -21,14 +21,29 @@ class CogRand(commands.Cog, name=R.COG.NAME, description=R.COG.DESC):
         with open(R.PATH.TABLES, "r") as f:
             self.lootTables = json.load(f)
         with open(R.PATH.POKEDEX, "r") as f:
-            self.pokedex: Pokedex = Pokedex(json.load(f))
+            self.pokedex = Pokedex(json.load(f))
+        
+        self.lastSearch: dict[int, list] = {}
 
     async def trySub(self, sub, *args, **kwargs):
         try:
-            await sub(*args, **kwargs)
-            return True
+            res = await sub(*args, **kwargs)
+            if res == None: res = True
+            return res
         except Fail:
             return False
+    
+    def getPokemonByName(self, name: str):
+        name = name.strip().lower()
+        pkmn = self.pokedex.get(name)
+        if pkmn:
+            return pkmn
+        shuffleSet = shuffleWord(name)
+        for shuffledName in shuffleSet:
+            pkmn = self.pokedex.get(shuffledName)
+            if pkmn:
+                return pkmn
+        return None
         
     async def sendPkmn(self, ctx: commands.Context, pkmn: Pokemon):
         pages = []
@@ -37,17 +52,25 @@ class CogRand(commands.Cog, name=R.COG.NAME, description=R.COG.DESC):
             pages.append({"embed": getMuOSEmbed(**embed)})
         await paginate(ctx, pages)
     
+    async def sendPkmnList(self, ctx: commands.Context, title: str, pkmnList: list[Pokemon]):
+        pages = []
+        pageEmbeds = R.GET_PKMN_LIST_PAGES(title, pkmnList)
+        for embed in pageEmbeds:
+            pages.append({"embed": getMuOSEmbed(**embed)})
+        await paginate(ctx, pages)
+    
     async def sendPkmnShort(self, ctx: commands.Context, pkmn: Pokemon):
         embed = getMuOSEmbed(**R.GET_PKMN_EMBED(pkmn))
         await ctx.send(embed=embed)
     
-    @commands.group(**R.RANDOM.meta, invoke_without_command=True)
-    async def random(self, ctx: commands.Context, *, args: str=None):
+    @commands.group(**R.RAND.meta, invoke_without_command=True)
+    async def random(self, ctx: commands.Context, *args: str):
         if not args:
-            await ctx.send(R.RANDOM.desc)
+            await ctx.send(R.RAND.desc)
             return
         
         if not ctx.invoked_subcommand:
+            args = " ".join(args)
             if await self.trySub(self.randDice, ctx, dice=args): return
             raise Fail(R.ERR.INVALID_SUBCOMMAND(args))
     
@@ -77,43 +100,45 @@ class CogRand(commands.Cog, name=R.COG.NAME, description=R.COG.DESC):
         name = random.choice(self.pokedex.getAllNames())
         pkmn = self.pokedex.get(name)
         await self.sendPkmnShort(ctx, pkmn)
+    
+    @random.command(**R.RAND_LAST.meta)
+    async def randLast(self, ctx: commands.Context, *, args: Optional[str]=None):
+        lastSearch = self.lastSearch.get(ctx.author.id)
+        if not lastSearch:
+            raise Fail(R.ERR.NO_LAST)
+        choice = random.choice(lastSearch)
+        if isinstance(choice, Pokemon):
+            await self.sendPkmnShort(ctx, choice)
+        else:
+            raise NotImplementedError()
 
     @commands.group(**R.DEX.meta, invoke_without_command=True)
-    async def dex(self, ctx: commands.Context, *, args: Optional[str]=None):
+    async def dex(self, ctx: commands.Context, *args: Optional[str]):
         if not args:
             await ctx.send(R.DEX.desc)
             return
         
         if not ctx.invoked_subcommand:
-            if await self.trySub(self.pokemon, ctx, args=args): return
+            args = " ".join(args)
+            if await self.trySub(self.pokemon, ctx, args): return
             raise Fail(R.ERR.INVALID_SUBCOMMAND(args))
     
-    @dex.group(**R.POKEMON.meta, invoke_without_context=True)
-    async def pokemon(self, ctx: commands.Context, *, args: Optional[str]=None):
+    @dex.group(**R.DEX_PKMN.meta, invoke_without_command=True)
+    async def pokemon(self, ctx: commands.Context, *args: Optional[str]):
         if not args:
-            await ctx.send(R.POKEMON.desc)
+            await ctx.send(R.DEX_PKMN.desc)
             return
         
         if not ctx.invoked_subcommand:
+            args = " ".join(args)
             if await self.trySub(self.pkmnName, ctx, name=args): return
+            if await self.trySub(self.pkmnMove, ctx, move=args): return
             raise Fail(R.ERR.INVALID_SUBCOMMAND(args))
-    
-    def getPokemonByName(self, name: str):
-        name = name.strip().lower()
-        pkmn = self.pokedex.get(name)
-        if pkmn:
-            return pkmn
-        shuffleSet = shuffleWord(name)
-        for shuffledName in shuffleSet:
-            pkmn = self.pokedex.get(shuffledName)
-            if pkmn:
-                return pkmn
-        return None
         
-    @pokemon.command(**R.PKMN_NAME.meta)
+    @pokemon.command(**R.DEX_PKMN_NAME.meta)
     async def pkmnName(self, ctx: commands.Context, *, name: Optional[str]=None):
         if not name:
-            await ctx.send(R.PKMN_NAME.desc)
+            await ctx.send(R.DEX_PKMN_NAME.desc)
             return
         
         pkmn = self.getPokemonByName(name)
@@ -122,8 +147,54 @@ class CogRand(commands.Cog, name=R.COG.NAME, description=R.COG.DESC):
         else:
             raise Fail(R.ERR.BAD_POKEMON(name))
     
-    #@pokemon.command(**R.PKMN_MOVE.meta)
-    #async def pkmnMove(self, ctx: commands.Context, *, name: Optional[str]=None):
-    #    if not name:
-    #        await ctx.send(R.PKMN_MOVE.desc)
-    #        return
+    T = TypeVar("T")
+    async def collectAndSend(self, ctx: commands.Context, dex: Dex[T], key: Callable[[T], bool], title: str, fail: str):
+        matched = dex.collect(key)
+        
+        if matched:
+            await self.sendPkmnList(ctx, title, matched)
+            self.lastSearch[ctx.author.id] = matched
+        else:
+            raise Fail(fail)
+    
+    @pokemon.command(**R.DEX_PKMN_MOVE.meta)
+    async def pkmnMove(self, ctx: commands.Context, *, move: Optional[str]=None):
+        if not move:
+            await ctx.send(R.DEX_PKMN_MOVE.desc)
+            return
+        
+        await self.collectAndSend(
+            ctx,
+            self.pokedex,
+            lambda pkmn: pkmn.getMove(move.lower()),
+            R.INFO.DEX_PKMN_MOVE_TITLE(move.title()),
+            R.ERR.MOVE_NOT_FOUND(move.title())
+        )
+    
+    @pokemon.command(**R.DEX_PKMN_ABILITY.meta)
+    async def pkmnAbility(self, ctx: commands.Context, *, ability: Optional[str]=None):
+        if not ability:
+            await ctx.send(R.DEX_PKMN_ABILITY.desc)
+            return
+        
+        await self.collectAndSend(
+            ctx,
+            self.pokedex,
+            lambda pkmn: pkmn.hasAbility(ability.lower()),
+            R.INFO.DEX_PKMN_ABILITY_TITLE(ability.title()),
+            R.ERR.ABILITY_NOT_FOUND(ability.title())
+        )
+    
+    @pokemon.command(**R.DEX_PKMN_TYPE.meta)
+    async def pkmnType(self, ctx: commands.Context, *, typ: Optional[str]=None):
+        if not typ:
+            await ctx.send(R.DEX_PKMN_TYPE.desc)
+            return
+        
+        await self.collectAndSend(
+            ctx,
+            self.pokedex,
+            lambda pkmn: pkmn.hasType(typ.lower()),
+            R.INFO.DEX_PKMN_TYPE_TITLE(typ.title()),
+            R.ERR.TYPE_NOT_FOUND(typ.title())
+        )
