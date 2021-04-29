@@ -1,13 +1,11 @@
 
 import asyncio
 #from solos import printNLP
-from typing import Coroutine, Union
+from typing import Union
 import datetime as dt
 import discord
 from discord.ext import commands, tasks
 import os
-
-from discord.ext.commands.core import Command
 
 from CogRand import CogRand
 from Help import Help

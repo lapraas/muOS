@@ -15,6 +15,7 @@ R = T.RAND
 
 dicePat = re.compile(r"^(\d+)d(\d+)$")
 whitespacePat = re.compile(r"\s")
+commaPat = re.compile(r",")
 
 class CogRand(commands.Cog, name=R.COG.NAME, description=R.COG.DESC):
     def __init__(self, bot: commands.Bot):
@@ -135,6 +136,56 @@ class CogRand(commands.Cog, name=R.COG.NAME, description=R.COG.DESC):
             if await self.trySub(self.pkmnName, ctx, name=args): return
             if await self.trySub(self.pkmnMove, ctx, move=args): return
             raise Fail(R.ERR.INVALID_SUBCOMMAND(args))
+    
+    @pokemon.group()
+    async def query(self, ctx: commands.Context, *, query: Optional[str]=None):
+        if not query:
+            return
+        
+        op = None
+        allMatches = set()
+        for chunk in commaPat.split(query):
+            failText = ""
+            words = whitespacePat.split(chunk)
+            moveKws = ["learns", "knows", "move", "moves"]
+            abilityKws = ["has", "ability", "abilities"]
+            typeKws = ["is", "type", "types"]
+            allKws = moveKws + abilityKws + typeKws
+            if not words[0] in allKws:
+                if not op:
+                    raise Fail(f"For the chunk `{chunk}`: The first chunk should start with one of {', '.join([f'`{kw}`' for kw in allKws])}.")
+                else:
+                    args = words
+            else:
+                op, *args = words
+            or_ = any(x in args for x in ["or", "any"])
+            and_ = any(x in args for x in ["and", "all"])
+            if or_ and and_:
+                failText += f"For the chunk `{chunk}`: Chunks with both `or` and `and` aren't implemented yet, sorry."
+            targets = [arg for arg in args if not arg in ["or", "any", "and", "all"]]
+            chunkMatches = set()
+            for target in targets:
+                target = target.lower()
+                if op in moveKws:
+                    matches = self.pokedex.collect(lambda pkmn: pkmn.getMove(target))
+                    if not matches: failText += f"For the target `{target}` in the chunk `{chunk}`: No Pokemon were found with this move."
+                elif op in abilityKws:
+                    matches = self.pokedex.collect(lambda pkmn: pkmn.hasAbility(target))
+                    if not matches: failText += f"For the target `{target}` in the chunk `{chunk}`: No Pokemon were found with this ability."
+                elif op in typeKws:
+                    matches = self.pokedex.collect(lambda pkmn: pkmn.hasType(target))
+                    if not matches: failText += f"For the target `{target}` in the chunk `{chunk}`: No Pokemon were found with this type."
+                if not chunkMatches:
+                    chunkMatches |= matches
+                else:
+                    if or_:
+                        chunkMatches |= matches
+                    else:
+                        chunkMatches &= matches
+            if not allMatches:
+                allMatches |= matches
+            else:
+                allMatches &= matches
         
     @pokemon.command(**R.DEX_PKMN_NAME.meta)
     async def pkmnName(self, ctx: commands.Context, *, name: Optional[str]=None):

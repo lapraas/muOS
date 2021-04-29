@@ -1,11 +1,9 @@
 from typing import Union
-import bs4
 from bs4 import BeautifulSoup
 import json
 import random
 import re
 import requests
-import time
 
 pokedex = {}
 
