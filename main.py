@@ -1,28 +1,34 @@
 
 import asyncio
 #from solos import printNLP
-from typing import Union
 import datetime as dt
 import discord
 from discord.ext import commands, tasks
 import os
+import traceback
+from typing import Union
 
+from CogDex import CogDex
+from CogMod import CogMod
 from CogRand import CogRand
 from Help import Help
 from sources.general import BOT_PREFIX, MENTION_ME
+from sources.ids import TEST
 from utils import Fail, getRandomAvatarImageAndTime, handlePaginationReaction
 
 intents: discord.Intents = discord.Intents.default()
 intents.members = True
-intents.reactions = True
-intents.dm_reactions = True
 
 def determinePrefix(bot: commands.Bot, message: discord.Message):
     if isinstance(message.channel, discord.DMChannel):
         if message.content.startswith(BOT_PREFIX):
             return BOT_PREFIX
+        if message.content.startswith(BOT_PREFIX.title()):
+            return BOT_PREFIX.title()
         return ""
     else:
+        if message.content.startswith(BOT_PREFIX.title()):
+            return BOT_PREFIX.title()
         return BOT_PREFIX
 
 client = commands.Bot(
@@ -33,6 +39,10 @@ client = commands.Bot(
 )
 cogRand = CogRand(client)
 client.add_cog(cogRand)
+cogDex = CogDex(client)
+client.add_cog(cogDex)
+cogMod = CogMod()
+client.add_cog(cogMod)
 
 @tasks.loop(hours=24 * 2)
 async def changeAvatar():
@@ -65,13 +75,20 @@ async def on_message(message: discord.Message):
         await client.process_commands(message)
 
 @client.event
+async def on_message_delete(message: discord.Message):
+    if message.author.bot: return
+    await cogMod.handleMessageDelete(message)
+
+@client.event
 async def on_reaction_add(reaction: discord.Reaction, user: Union[discord.User, discord.Member]):
+    #print("on_reaction_add")
     if user.bot: return
     await handlePaginationReaction(reaction.message, reaction.emoji, user)
 
 @client.event
 async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
     """
+    print("on_raw_reaction_add")
     if not payload.message_id in [message.id for message in client.cached_messages]:
         user = await client.fetch_user(payload.user_id)
         channel = await client.fetch_channel(payload.channel_id)
@@ -94,11 +111,16 @@ async def on_command_error(ctx: commands.Context, error: commands.CommandError):
         error: Exception = error.original
         if isinstance(error, Fail):
             toSend += error.message
+            print(error.message)
         else:
             toSend += f"An unexpected error occurred. Please let {MENTION_ME} know."
+            if ctx.guild.id == TEST.ID:
+                toSend += f"\n{traceback.format_exc()}"
             toRaise = error
     else:
         toSend += f"An unexpected error occurred. Please let {MENTION_ME} know."
+        if ctx.guild.id == TEST.ID:
+            toSend += f"\n{traceback.format_exc()}"
         toRaise = error
     if ctx.command:
         toSend += f"\nIf you need help with this command, please use `{BOT_PREFIX}help {ctx.command.qualified_name}`."

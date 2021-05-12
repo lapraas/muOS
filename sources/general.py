@@ -48,3 +48,7 @@ def chunks(lst: list, n: int):
 
 def evenChunks(lst: list, n: int=3):
     return chunks(lst, math.ceil(len(lst)/n))
+
+RawField = Union[tuple[str, str], tuple[str, str, bool]]
+RawDictPaginatorPage = list[dict[str, Union[str, list[RawField]]]]
+RawDictPaginator = dict[str, RawDictPaginatorPage]

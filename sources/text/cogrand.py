@@ -1,10 +1,9 @@
 
 from copy import deepcopy
-import math
 from typing import Union
 
 from Pokemon import Evolution, LearnedMove, METHODS, Pokemon
-from sources.general import BOT_PREFIX as mew, Cmd, EMPTY, chunks, evenChunks, intable
+from sources.general import BOT_PREFIX as mew, Cmd, EMPTY, chunks, evenChunks
 
 class COG:
     NAME = "Random Cog"
@@ -202,7 +201,7 @@ class ERR:
     INVALID_SUBCOMMAND = lambda args: f"The entry `{args}` is invalid."
     BAD_DICE_FORMAT = lambda arg: f"The entry `{arg}` isn't a valid die. Format it like `4d6`, where `4` is the dice count and `6` is the number of sides on each die."
     BAD_POKEMON = lambda arg: f"The Pokemon specified, `{arg}`, wasn't found."
-    NO_LAST = f"You haven't used a dex command since the bot has been restarted!"
+    NO_LAST = f"You haven't used a dex command since the bot was restarted!"
     MOVE_NOT_FOUND = _not_found("move")
     ABILITY_NOT_FOUND = _not_found("ability")
     TYPE_NOT_FOUND = _not_found("type")

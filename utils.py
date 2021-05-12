@@ -43,14 +43,14 @@ def shuffleWord(word):
     transposes = [a + b[1] + b[0] + b[2:] for a, b in splits if len(b)>1]
     replaces   = [a + c + b[1:] for a, b in splits for c in alphabet if b]
     inserts    = [a + c + b     for a, b in splits for c in alphabet]
-    shuffle = set(deletes + transposes + replaces + inserts)
-    shuffle.add("".join(let for let in word if let in alphanum))
-    shuffle.add(re.sub(dashPat, " ", word))
-    shuffle.add(re.sub(spacePat, "-", word))
-    shuffle.add(re.sub(ePat, "\u00e9", word)) # accented e (for flabebe)
-    return shuffle
+    shuffles = set(deletes + transposes + replaces + inserts)
+    for w in ["".join(let for let in shuffle if let in alphanum) for shuffle in shuffles]: shuffles.add(w)
+    for w in [re.sub(dashPat, " ", shuffle) for shuffle in shuffles]: shuffles.add(w)
+    for w in [re.sub(spacePat, "-", shuffle) for shuffle in shuffles]: shuffles.add(w)
+    for w in [re.sub(ePat, "\u00e9", shuffle) for shuffle in shuffles]: shuffles.add(w) # accented e (for flabebe)
+    return shuffles
 
-def getEmbed(title: str, description: str=None, fields: list[Union[tuple[str, str], tuple[str, str, bool]]]=None, imageURL: str=None, footer=None, url=None):
+def getEmbed(title: str, description: str=None, fields: list[Union[tuple[str, str], tuple[str, str, bool]]]=None, imageURL: str=None, footer=None, url=None, thumbnail=None):
     """ Creates a custom embed. """
     
     if not description: description = ""
@@ -63,6 +63,8 @@ def getEmbed(title: str, description: str=None, fields: list[Union[tuple[str, st
     )
     if url:
         e.url = url
+    if thumbnail:
+        e.set_thumbnail(url=thumbnail)
     for field in fields:
         e.add_field(
             name=field[0],
@@ -75,13 +77,13 @@ def getEmbed(title: str, description: str=None, fields: list[Union[tuple[str, st
         e.set_footer(text=footer)
     return e
 
-def getMuOSEmbed(title: str, description: str=None, fields: list[Union[tuple[str, str], tuple[str, str, bool]]]=None, imageURL: str=None, footer=None, url=None):
-    e = getEmbed(title, description, fields, imageURL, footer, url)
-    e.set_thumbnail(url=random.choice(GRAPHICS))
+def getMuOSEmbed(title: str, description: str=None, fields: list[Union[tuple[str, str], tuple[str, str, bool]]]=None, imageURL: str=None, footer=None, url=None, thumbnail=None):
+    if not thumbnail: thumbnail = random.choice(GRAPHICS)
+    e = getEmbed(title, description, fields, imageURL, footer, url, thumbnail)
     return e
 
 class Page:
-    def __init__(self, content: str=None, embed: Optional[discord.Embed]=None):
+    def __init__(self, content: Optional[str]=None, embed: Optional[discord.Embed]=None):
         self.content = content
         self.embed = embed
     
@@ -154,15 +156,48 @@ class Paginator:
     
     def getFocused(self):
         return self.pages[self.focused]
+    
+
+class DictPaginator(Paginator):
+    pages: dict[str, list[Page]]
+
+    def __init__(self, pages: dict[str, list[Page]], issuerID: int, startFocused: str):
+        self.pages = pages
+        self.issuerID = issuerID
+        self.ignoreIndex = True
+
+        self.focused = startFocused
+        self.subFocused = 0
+    
+    def getReactions(self, _):
+        reactions = self.pages.keys()
+        if len(self.pages[self.focused]) > 1:
+            reactions += U.smolArrows
+        return reactions
+    
+    def refocus(self, emoji: str):
+        if emoji in self.pages:
+            self.focused = emoji
+        elif emoji == U.emojiPrior and self.subFocused > 0:
+            self.subFocused -= 1
+        elif emoji == U.emojiNext and self.subFocused < len(self.pages[self.focused]):
+            self.subFocused += 1
+        
+        return self.getFocused()
+    
+    def getFocused(self):
+        return self.pages[self.focused][self.subFocused]
+
 
 toListen: dict[int, Paginator] = {}
         
 async def updatePaginatedMessage(message: discord.Message, user: discord.User, paginator: Paginator, emoji: Optional[str]=None):
     if not user.id == paginator.issuerID: return
     oldFocused = paginator.getFocused()
-    focused = paginator.refocus(emoji)
-    if not oldFocused is focused:
-        await message.edit(content=focused.content, embed=focused.embed)
+    if emoji:
+        focused = paginator.refocus(emoji)
+        if not oldFocused is focused:
+            await message.edit(content=focused.content, embed=focused.embed)
     isDM = isinstance(message.channel, discord.DMChannel)
     if emoji in U.switches and not isDM:
         newReactions = paginator.getReactions(isDM)
@@ -180,12 +215,36 @@ async def paginate(ctx: commands.Context, contents: list[dict[str, Union[str, di
     for page in contents:
         pages.append(Page(**page))
     if not pages:
-        raise IndexError("No messages were given to the pagination function")
+        raise IndexError("No pages were given to the pagination function.")
     
     paginator = Paginator(pages, ctx.author.id, ignoreIndex)
+    await sendPaginator(ctx, paginator)
+
+async def paginateEmbeds(ctx: commands.Context, contents: list[dict[str, str]], ignoreIndex: bool=False):
+    if not contents: raise IndexError("No embeds were given to the pagination function.")
+    pages = []
+    for page in contents:
+        pages.append(Page(embed=getMuOSEmbed(**page)))
+    
+    paginator = Paginator(pages, ctx.author.id, ignoreIndex)
+    await sendPaginator(ctx, paginator)
+
+async def paginateDict(ctx: commands.Context, contents: dict[str, list[dict[str, str]]], startFocused = str):
+    pages: dict[str, list[Page]] = {}
+    for emoji in contents:
+        pages[emoji] = []
+        for page in contents[emoji]:
+            pages[emoji].append(Page(embed=getMuOSEmbed(**page)))
+    if not pages:
+        raise IndexError("No pages were given to the pagination function.")
+    
+    paginator = DictPaginator(pages, ctx.author.id, startFocused)
+    await sendPaginator(ctx, paginator)
+
+async def sendPaginator(ctx: commands.Context, paginator: Paginator):
     focused = paginator.getFocused()
     message: discord.Message = await ctx.send(content=focused.content, embed=focused.embed)
-    if len(pages) == 1: return
+    if len(paginator.pages) == 1: return
     toListen[message.id] = paginator
     await updatePaginatedMessage(message, ctx.author, paginator)
 

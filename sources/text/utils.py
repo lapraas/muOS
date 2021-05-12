@@ -25,6 +25,7 @@ emoji10 = "🔟"
 emojiNumbers = "🔢"
 emojiArrows = "↔️"
 
+smolArrows = [emojiPrior, emojiNext]
 arrows = [emojiFirst, emojiPrior, emojiNext, emojiLast]
 indices = [emoji1, emoji2, emoji3, emoji4, emoji5, emoji6, emoji7, emoji8, emoji9, emoji10]
 switches = [emojiNumbers, emojiArrows]
