@@ -122,14 +122,6 @@ def getIDAndName(rawID: int, aVarieties: PAVarieties, aForms: PAForms, aNames: P
 
     return baseID, name, battleOnly
 
-def _getFormName(realID: int, baseID: int):
-    r = requests.get(f"https://pokemondb.net/pokedex/{baseID}")
-    soup = BeautifulSoup(r.text, "html.parser")
-    p = soup.find("a", href=f"#tab-basic-{realID + 42}")
-    if not p:
-        raise Exception(f"No tab found with ID {realID} (+ 42 {realID + 42})")
-    return p.getText()
-
 def getAbilities(aAbilities: PAAbilities):
     abilities: RawAbilities = []
     hidden: Optional[str] = None
@@ -161,13 +153,14 @@ def getMoves(aMoves: PAMoves):
     return moves
 
 def _addMovesFromPDB(moveSoup: BeautifulSoup, versionText: str, checkText: str, dexText: str, moves: RawMoves, *, includeNumber: bool=False):
-    p = moveSoup.find(string=checkText)
+    p = moveSoup.find(lambda elem: checkText in elem.getText())
     if not p:
         return
     elem = p.find_next("table", class_="data-table")
 
     for number, tr in enumerate(elem.findAll("tr")):
         if (tr.find("th")): continue
+        
         moveName = tr.find("a", class_="ent-name").getText().lower()
         if not moveName in moves:
             moves[moveName] = []
@@ -194,10 +187,9 @@ def addMissedMoves(pkid: int, existingMoves: RawMoves):
         existingMoveNames = [existingMove[0] for existingMove in existingMoves]
         if moveName in existingMoveNames:
             index = existingMoveNames.index(moveName)
-            for method in move:
-                existingMoves[index].append(method)
+            existingMoves[index] += move
         else:
-            existingMoves.append([moveName, *move])
+            existingMoves[moveName] = move
 
 def getTypes(aTypes: PATypes):
     types: RawTypes = []
@@ -364,5 +356,5 @@ def main():
     #createNewDex("./abilitydex.json", "ability", getAbility)
 
 if __name__ == "__main__":
-    main()
-    #pretty(createNew("pokemon", "sandslash-alola", getPokemon))
+    #main()
+    pretty(createNew("pokemon", "gardevoir", getPokemon))

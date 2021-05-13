@@ -114,14 +114,12 @@ async def on_command_error(ctx: commands.Context, error: commands.CommandError):
             print(error.message)
         else:
             toSend += f"An unexpected error occurred. Please let {MENTION_ME} know."
-            if ctx.guild.id == TEST.ID:
-                toSend += f"\n{traceback.format_exc()}"
             toRaise = error
     else:
         toSend += f"An unexpected error occurred. Please let {MENTION_ME} know."
-        if ctx.guild.id == TEST.ID:
-            toSend += f"\n{traceback.format_exc()}"
         toRaise = error
+    if toRaise and ctx.guild.id == TEST.ID:
+        toSend += f"\n```\n{''.join(traceback.format_exception(type(error), error, error.__traceback__))}```"
     if ctx.command:
         toSend += f"\nIf you need help with this command, please use `{BOT_PREFIX}help {ctx.command.qualified_name}`."
     await ctx.send(toSend)
@@ -134,4 +132,5 @@ async def globalCheck(ctx: commands.Context):
     print(f"[{str(dt.datetime.now().time())[:-7]}, #{channelName}] {ctx.message.author.name}: {ctx.message.content}")
     return True
 
-client.run(os.getenv("DISCORD_SECRET_MUOS"))
+with open("./sources/key.txt", "r") as f:
+    client.run(f.read())

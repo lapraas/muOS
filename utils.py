@@ -6,10 +6,8 @@ import json
 import random
 from typing import Optional, Union
 
-from sources.general import EMPTY, GRAPHICS, MUOS_GRAPHIC_URL, stripLines
-import sources.text as T
-
-U = T.UTIL
+from sources.general import EMPTY, GRAPHICS, stripLines
+import sources.text.utils as U
 
 class Fail(Exception):
     def __init__(self, message: str):
@@ -208,9 +206,9 @@ async def updatePaginatedMessage(message: discord.Message, user: discord.User, p
         newReactions = paginator.getReactions(isDM)
         for reaction in newReactions:
             await message.add_reaction(reaction)
-        
 
-async def paginate(ctx: commands.Context, contents: list[dict[str, Union[str, discord.Embed]]], ignoreIndex: bool=False):
+_RawPagesDEPR = list[dict[str, Union[str, discord.Embed]]]
+async def paginateDEPR(ctx: commands.Context, contents: _RawPagesDEPR, ignoreIndex: bool=False):
     pages = []
     for page in contents:
         pages.append(Page(**page))
@@ -220,21 +218,29 @@ async def paginate(ctx: commands.Context, contents: list[dict[str, Union[str, di
     paginator = Paginator(pages, ctx.author.id, ignoreIndex)
     await sendPaginator(ctx, paginator)
 
-async def paginateEmbeds(ctx: commands.Context, contents: list[dict[str, str]], ignoreIndex: bool=False):
-    if not contents: raise IndexError("No embeds were given to the pagination function.")
+RawPage = Union[str, dict[str, str], tuple[str, dict[str, str]]]
+def buildRawPage(page: RawPage):
+    if isinstance(page, str):
+        return Page(content=page)
+    if isinstance(page, dict):
+        return Page(embed=getMuOSEmbed(**page))
+    if isinstance(page, tuple):
+        return Page(content=page[0], embed=getMuOSEmbed(**page[1]))
+
+async def paginate(ctx: commands.Context, contents: list[RawPage], ignoreIndex: bool=False):
     pages = []
     for page in contents:
-        pages.append(Page(embed=getMuOSEmbed(**page)))
-    
+        pages.append(buildRawPage(page))
     paginator = Paginator(pages, ctx.author.id, ignoreIndex)
     await sendPaginator(ctx, paginator)
 
-async def paginateDict(ctx: commands.Context, contents: dict[str, list[dict[str, str]]], startFocused = str):
+DictPages = dict[str, list[RawPage]]
+async def paginateDict(ctx: commands.Context, contents: DictPages, startFocused = str):
     pages: dict[str, list[Page]] = {}
     for emoji in contents:
         pages[emoji] = []
         for page in contents[emoji]:
-            pages[emoji].append(Page(embed=getMuOSEmbed(**page)))
+            pages[emoji].append(buildRawPage(page))
     if not pages:
         raise IndexError("No pages were given to the pagination function.")
     

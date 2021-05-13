@@ -1,6 +1,6 @@
 
 from typing import Callable, Mapping, Optional, Union
-from utils import getMuOSEmbed, paginate
+from utils import getMuOSEmbed, paginateDEPR
 import discord
 from discord.ext import commands
 
@@ -21,7 +21,7 @@ class Help(commands.DefaultHelpCommand):
                 "content": T.HELP.cogPaginationContent(cogNames, i),
                 "embed": getMuOSEmbed(**T.HELP.cogEmbed(cog.qualified_name, cog.description, getNonhiddenCommands(cmds, lambda cmd: cmd.qualified_name)))
             })
-        await paginate(self.context, pages, True)
+        await paginateDEPR(self.context, pages, True)
     
     async def sendPaginatedHelp(self, parentName: str, cmds: list[commands.Command], aliases: Optional[list[str]]=None):
         pages = []
@@ -31,7 +31,7 @@ class Help(commands.DefaultHelpCommand):
                 "content": T.HELP.commandPaginationContent(parentName, commandNames, i, aliases),
                 "embed": getMuOSEmbed(**T.HELP.commandEmbed(command.qualified_name, command.aliases, command.help))
             })
-        await paginate(self.context, pages, True)
+        await paginateDEPR(self.context, pages, True)
     
     async def send_cog_help(self, cog: commands.Cog):
         await self.sendPaginatedHelp(cog.qualified_name, getNonhiddenCommands(cog.get_commands()))

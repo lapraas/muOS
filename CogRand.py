@@ -2,7 +2,7 @@
 from sources.pkmn import MISSINGNO
 from Pokemon import Dex, LearnedMove, METHODS, Pokedex, Pokemon
 from typing import Any, Callable, Generic, Optional, TypeVar, Union
-from utils import Fail, getMuOSEmbed, paginate, shuffleWord
+from utils import Fail, getMuOSEmbed, paginateDEPR, shuffleWord
 import discord
 from discord.ext import commands
 import json
@@ -52,14 +52,14 @@ class CogRand(commands.Cog, name=R.COG.NAME, description=R.COG.DESC):
         pageEmbeds = R.GET_PKMN_PAGES(pkmn)
         for embed in pageEmbeds:
             pages.append({"embed": getMuOSEmbed(**embed)})
-        await paginate(ctx, pages)
+        await paginateDEPR(ctx, pages)
     
     async def sendPkmnList(self, ctx: commands.Context, title: str, pkmnList: list[Pokemon]):
         pages = []
         pageEmbeds = R.GET_PKMN_LIST_PAGES(title, pkmnList)
         for embed in pageEmbeds:
             pages.append({"embed": getMuOSEmbed(**embed)})
-        await paginate(ctx, pages)
+        await paginateDEPR(ctx, pages)
     
     async def sendPkmnShort(self, ctx: commands.Context, pkmn: Pokemon):
         embed = getMuOSEmbed(**R.GET_PKMN_EMBED(pkmn))

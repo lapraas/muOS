@@ -1,19 +1,17 @@
 
-from enum import Enum
-from sources.text.cogdex import GET_PKMN_LIST_PAGES, GET_PKMN_PAGES
-from typing import Callable, Generic, Optional, Type, TypeVar
+from typing import Any, Callable, Coroutine, Generic, Optional, Type, TypeVar
 from discord.ext import commands
 
 from Dexes import Ability, Dex, DexItem, Move, POKEDEX, MOVEDEX, ABILITYDEX, Pokemon
 from sources.text import DEX as D
 import re
-from utils import Fail, paginateDict, paginateEmbeds, shuffleWord
+from utils import Fail, paginate, shuffleWord
 
 Ctx = commands.Context
+M = TypeVar("M", bound="DexItem")
 
 spacePat = re.compile(r"\s+")
 
-M = TypeVar("M", bound="DexItem")
 class Mode():
     def __init__(self, names: list[str]):
         self.name = names[0]
@@ -42,12 +40,11 @@ class ModifierMode(Mode, Generic[M]):
         return self.key
 
 class BaseMode(Mode, Generic[M]):
-    def __init__(self, names: list[str], cls: Type[M], dex: Dex[M], dispFunc: Callable[[Ctx, M], None], dispListFunc: Callable[[Ctx, str, list[M]], None], extraModes: list[Qualifier[M]], modifiers: list[ModifierMode[M]]):
+    def __init__(self, names: list[str], cls: Type[M], dex: Dex[M], sender: Callable[[Ctx, str, set[M]], Coroutine[Any, Any, None]], extraModes: list[Qualifier[M]], modifiers: list[ModifierMode[M]]):
         super().__init__(names)
         self.cls = cls
         self.dex = dex
-        self.dispFunc = dispFunc
-        self.dispListFunc = dispListFunc
+        self.sender = sender
         self.extraModes = extraModes
         self.modifiers = modifiers
     
@@ -57,11 +54,8 @@ class BaseMode(Mode, Generic[M]):
     def getDex(self):
         return self.dex
     
-    def getDispFunc(self):
-        return self.dispFunc
-    
-    def getDispListFunc(self):
-        return self.dispListFunc
+    def getSender(self):
+        return self.sender
     
     def getQualifier(self, target: str):
         for mode in self.extraModes:
@@ -75,17 +69,18 @@ class BaseMode(Mode, Generic[M]):
                 return mode
         return None
 
-async def sendPkmn(ctx: Ctx, pkmn: Pokemon):
-    pages = GET_PKMN_PAGES(pkmn)
-    await paginateEmbeds(ctx, pages)
-
-async def sendPkmnList(ctx: Ctx, query: str, pkmnList: list[Pokemon]):
-    pages = GET_PKMN_LIST_PAGES(query, pkmnList)
-    await paginateEmbeds(ctx, pages)
+def getItemsSender(single: Callable[[set[M]], list], multi: Callable[[str, set[M]], list]):
+    async def sendItems(ctx: Ctx, query: str, items: set[M]):
+        if len(items) == 1:
+            pages = single(*items)
+        else:
+            pages = multi(query, items)
+        await paginate(ctx, pages)
+    return sendItems
 
 POKEMON = BaseMode(
     ["pokemon", "pkmn"],
-    Pokemon, POKEDEX, sendPkmn, sendPkmnList,
+    Pokemon, POKEDEX, getItemsSender(D.GET_PKMN_PAGES, D.GET_PKMN_LIST_PAGES),
     [
         Qualifier(
             ["move", "moves"],
@@ -125,7 +120,7 @@ POKEMON = BaseMode(
 )
 MOVE = BaseMode(
     ["move", "moves", "learns", "learn"],
-    Move, MOVEDEX, None, None,
+    Move, MOVEDEX, None,
     [
 
     ],
@@ -135,7 +130,7 @@ MOVE = BaseMode(
 )
 ABILITY = BaseMode(
     ["ability", "abilities", "has"],
-    Ability, ABILITYDEX, None, None,
+    Ability, ABILITYDEX, None,
     [
 
     ],
@@ -159,7 +154,7 @@ withPat = re.compile(r"\s+with\s+")
 andOrPat = re.compile(r"(?:\s*,)?((?:\s+and\s+)|(?:\s+or\s+))|(?:\s*,\s*)")
 
 class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
-    def __init__(self, bot: commands.bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.lastSearch: dict[int, list] = {}
 
@@ -199,10 +194,7 @@ class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
         if not mode:
             for item in matches: break
             mode = matchType(item.__class__)
-        if len(matches) == 1:
-            await mode.getDispFunc()(ctx, *matches)
-        else:
-            await mode.getDispListFunc()(ctx, query, matches)
+        await mode.getSender()(ctx, query, matches)
         
     def specificSearch(self, query: str):
         query = query.lower()
@@ -225,17 +217,17 @@ class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
         # The attributes each matched item must have.
         qualifier: Optional[Qualifier] = None
         # Each boolean operator in the rest of the query.
-        print(andOrPat.findall(qualifiersStr))
-        opFinds = [s.strip() for s in andOrPat.findall(qualifiersStr)]
+        opFinds = [s.strip() for s in andOrPat.findall(qualifiersStr) if s.strip()]
         # We can only have one operator. The default is "and".
         op = "and" if not opFinds else opFinds[0]
         # Make sure no other operators exist - can't mix.
         for otherOp in opFinds:
             if otherOp != op: raise Fail(D.ERR.MIXING_OPS(query))
+        print(op)
 
         # Iterate through each qualifier.
         for qualifierStr in andOrPat.split(qualifiersStr):
-            if not qualifiersStr.strip(): continue
+            if not qualifierStr or not qualifierStr.strip(): continue
             # Split by the first space - the first word of the qualifier string can be the qualifier mode.
             split = spacePat.split(qualifierStr, 1)
             # We want to be able to use the same qualifier mode if none exists after the first.
@@ -246,12 +238,13 @@ class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
                 rest = qualifierStr
             # If the first qualifier string doesn't have a qualifier mode, fail.
             if not qualifier: raise Fail(D.ERR.NO_EXTRA_MODE(query, qualifierStr))
+            print(rest)
             key = qualifier.getKey()(rest)
             extraMatches = dex.collect(key)
             if op == "or" or not op or not matches:
                 matches |= extraMatches
             else:
-                matches.intersection_update(extraMatches)
+                matches &= extraMatches
                 if not matches:
                     break
         return matches
