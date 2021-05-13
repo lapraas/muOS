@@ -155,8 +155,8 @@ def matchType(typ: Type[DexItem]):
         if member.getCls() == typ:
             return member
 
-withPat = re.compile(r"\s*with\s*")
-andOrPat = re.compile(r"\s*(?:and|or|,)\s*")
+withPat = re.compile(r"\s+with\s+")
+andOrPat = re.compile(r"(?:\s*,)?((?:\s+and\s+)|(?:\s+or\s+))|(?:\s*,\s*)")
 
 class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
     def __init__(self, bot: commands.bot):
@@ -165,11 +165,8 @@ class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
 
     @commands.command(**D.QUERY.meta)
     async def query(self, ctx: Ctx, *, query: str):
-        X = TypeVar("X", bound="DexItem")
         # A list of all matched items.
-        matches: set[X] = set()
-        # The dex to search through.
-        dex: Dex[X]
+        matches: set[DexItem] = set()
         # The type of item to match.
         mode: Optional[BaseMode] = None
         
@@ -228,28 +225,17 @@ class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
         # The attributes each matched item must have.
         qualifier: Optional[Qualifier] = None
         # Each boolean operator in the rest of the query.
+        print(andOrPat.findall(qualifiersStr))
         opFinds = [s.strip() for s in andOrPat.findall(qualifiersStr)]
-        # We can only have one operator.
-        op = None
-        if opFinds:
-            # If the first operator is a comma, search for another operator.
-            if opFinds[0] == ",":
-                for otherOp in opFinds:
-                    if op in ["and", "or"]:
-                        op = op
-                # If none was found, the default is `and`.
-                if not op:
-                    op = "and"
-            # If the first operator isn't a comma, grab the first operator.
-            else:
-                op = opFinds[0]
+        # We can only have one operator. The default is "and".
+        op = "and" if not opFinds else opFinds[0]
         # Make sure no other operators exist - can't mix.
         for otherOp in opFinds:
-            if otherOp == ",": continue
-            elif otherOp != op: raise Fail(D.ERR.MIXING_OPS(query))
+            if otherOp != op: raise Fail(D.ERR.MIXING_OPS(query))
 
         # Iterate through each qualifier.
         for qualifierStr in andOrPat.split(qualifiersStr):
+            if not qualifiersStr.strip(): continue
             # Split by the first space - the first word of the qualifier string can be the qualifier mode.
             split = spacePat.split(qualifierStr, 1)
             # We want to be able to use the same qualifier mode if none exists after the first.
