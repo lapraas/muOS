@@ -1,6 +1,6 @@
 
 import json
-from pokeapi import RawEvolutions, RawMoves, RawStats, getIDAndName
+from pokeapi import RawEvolutions, RawMoves, RawStats
 import re
 from typing import Callable, Generic, Optional, Type, TypeVar
 

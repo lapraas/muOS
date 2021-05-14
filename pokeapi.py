@@ -2,6 +2,7 @@
 import json
 from typing import Any, Callable, Optional, Union
 from bs4 import BeautifulSoup
+import bs4
 import requests
 import time
 
@@ -153,15 +154,19 @@ def getMoves(aMoves: PAMoves):
     return moves
 
 def _addMovesFromPDB(moveSoup: BeautifulSoup, versionText: str, checkText: str, dexText: str, moves: RawMoves, *, includeNumber: bool=False):
-    p = moveSoup.find(lambda elem: checkText in elem.getText())
+    def findP(tag: bs4.Tag):
+        if tag.name == "p" and checkText in tag.getText(): return True
+    p: bs4.Tag = moveSoup.find(findP)
     if not p:
         return
-    elem = p.find_next("table", class_="data-table")
+    elem: bs4.Tag = p.find_next("table", class_="data-table")
 
+    tr: bs4.Tag
     for number, tr in enumerate(elem.findAll("tr")):
         if (tr.find("th")): continue
         
-        moveName = tr.find("a", class_="ent-name").getText().lower()
+        moveName: str = tr.find("a", class_="ent-name").getText()
+        moveName = moveName.lower().replace(" ", "-").replace(",", "-")
         if not moveName in moves:
             moves[moveName] = []
         number = 0
@@ -337,6 +342,7 @@ def get(url: str, func: Callable[[dict], dict]):
     return item
 
 def createNewDex(fileName: str, apiName: str, func: Callable[[dict], dict]):
+    tic = time.perf_counter()
     arbitrarilyLargeNumber = 1000000
     dex = getDex(f"https://pokeapi.co/api/v2/{apiName}?limit={arbitrarilyLargeNumber}", func)
     try:
@@ -344,6 +350,8 @@ def createNewDex(fileName: str, apiName: str, func: Callable[[dict], dict]):
     except FileExistsError:
         f = open(fileName, "w")
     json.dump(dex, f)
+    toc = time.perf_counter()
+    print(f"Built dex for {apiName} in {round(toc - tic, 2)}s")
     f.close()
 
 def createNew(apiName: str, itemName: str, func: Callable[[dict], dict]):
@@ -356,5 +364,5 @@ def main():
     #createNewDex("./abilitydex.json", "ability", getAbility)
 
 if __name__ == "__main__":
-    #main()
-    pretty(createNew("pokemon", "gardevoir", getPokemon))
+    main()
+    #pretty(createNew("pokemon", "gardevoir", getPokemon))
