@@ -1,4 +1,5 @@
 
+from sources.pkmn import MISSINGNO
 from typing import Any, Callable, Coroutine, Generic, Optional, Type, TypeVar, Union
 from discord.ext import commands
 
@@ -189,7 +190,7 @@ class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
 
         if not mode:
             # If we don't have a mode, we want to do a specific search.
-            matches |= set(self.specificSearch(query))
+            matches |= set(self.specificSearch(query.lower()))
             # If we don't have a mode and the specific search fails, error.
             if not matches:
                 raise Fail(D.ERR.NO_MODE(query, [m.getName() for m in MODES]))
@@ -204,10 +205,11 @@ class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
         await mode.getSender()(ctx, query, matches)
         
     def specificSearch(self, query: str):
-        query = query.lower()
         if POKEDEX.get(query):
             return [POKEDEX.get(query)]
         shuffled = shuffleWord(query)
+        if "missingno" in shuffled:
+            return [MISSINGNO]
         pkmn = POKEDEX.searchByNames(shuffled)
         if pkmn: return [pkmn]
         move = MOVEDEX.searchByNames(shuffled)
