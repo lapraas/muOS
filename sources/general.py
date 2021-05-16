@@ -1,7 +1,7 @@
 
 from __future__ import annotations
 import math
-from typing import Optional, Union
+from typing import Callable, Optional, TypeVar, Union
 import sources.ids as IDS
 
 BOT_PREFIX = "mew."
@@ -52,3 +52,12 @@ def evenChunks(lst: list, n: int=3):
 RawField = Union[tuple[str, str], tuple[str, str, bool]]
 RawDictPaginatorPage = list[dict[str, Union[str, list[RawField]]]]
 RawDictPaginator = dict[str, RawDictPaginatorPage]
+
+T = TypeVar("T")
+def padItems(items: list[T], lenKey: Callable[[T], str], separator: str, rest: Callable[[T], str]):
+    strs: list[str] = []
+    maxLen = max(len(lenKey(item)) for item in items)
+    for item in items:
+        threshSpacing = " " * (maxLen - len(lenKey(item)) + 1)
+        strs.append(f"{lenKey(item)}{separator}{threshSpacing}{rest(item)}")
+    return strs

@@ -57,8 +57,16 @@ class Method:
         self.gen = gen
         self.lvl = lvl
     
-    def getLvl(self):
-        return self.lvl
+    def getLvl(self): return self.lvl
+    
+    def dispType(self): return self.typ.title()
+    def dispGen(self):
+        if self.gen == "sword-shield":
+            return "Gen 8"
+        elif self.gen == "ultra-sun-ultra-moon":
+            return "Gen 7"
+        else:
+            return "Gen ?"
 
 class Ability(DexItem):
     def __init__(self, rawName: str, name: str, effect: str, gen: str):
@@ -91,6 +99,10 @@ class LearnedMove:
     def getFromDex(self):
         return MOVEDEX.get(self.name)
 
+    def dispName(self):
+        return self.getFromDex().dispName()
+    def dispMethods(self):
+        return ", ".join(f"{method.dispType()}" for method in self.methods.values())
 
 class Enum:
     @classmethod
@@ -323,21 +335,24 @@ class Pokemon(DexItem):
     def hasHiddenAbility(self): return self.hiddenAbility != None
     def hasForms(self): return len(self.varieties) != 1
     def hasClassifications(self): return self.getIsBaby() or self.getIsLegendary() or self.getIsMythical()
+    def hasMove(self, move: Move): return move.getName() in self.moves
 
-    def hasMove(self, targets: set[str]):
+    def searchMoves(self, targets: set[str]):
         for moveName in self.moves:
             learnedMove = self.moves[moveName]
             move = learnedMove.getFromDex()
+            if not move:
+                print(learnedMove.getName())
             if move.getName() in targets or move.dispName().lower() in targets:
                 return True
         return False
-    def hasAbility(self, targets: set[str]):
+    def searchAbilities(self, targets: set[str]):
         for abilityName in self.getAbilities() + ([self.getHiddenAbility()] if self.hasHiddenAbility() else []):
             ability = ABILITYDEX.get(abilityName)
             if ability.getName() in targets or ability.dispName().lower() in targets:
                 return True
         return False
-    def hasType(self, targets: set[str]):
+    def searchTypes(self, targets: set[str]):
         for typ in self.getTypes():
             if typ in targets:
                 return True
@@ -355,7 +370,7 @@ class Dex(Generic[T]):
     def get(self, name: str):
         return self.items.get(name)
     
-    def searchByNames(self, nameList: list[str]):
+    def searchByNames(self, nameList: set[str]):
         for name in nameList:
             if self.items.get(name):
                 return self.items.get(name)

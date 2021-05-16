@@ -10,7 +10,6 @@ from typing import Union
 
 from CogDex import CogDex
 from CogMod import CogMod
-from CogRand import CogRand
 from Help import Help
 from sources.general import BOT_PREFIX, MENTION_ME
 from sources.ids import TEST
@@ -37,8 +36,6 @@ client = commands.Bot(
     help_command=Help(verify_checks=False),
     intents=intents
 )
-cogRand = CogRand(client)
-client.add_cog(cogRand)
 cogDex = CogDex(client)
 client.add_cog(cogDex)
 cogMod = CogMod()
@@ -132,5 +129,9 @@ async def globalCheck(ctx: commands.Context):
     print(f"[{str(dt.datetime.now().time())[:-7]}, #{channelName}] {ctx.message.author.name}: {ctx.message.content}")
     return True
 
-with open("./sources/key.txt", "r") as f:
-    client.run(f.read())
+key = os.getenv("DISCORD_SECRET_MUOS")
+if not key:
+    with open("./sources/key.txt", "r") as f:
+        key = f.read()
+
+client.run(key)

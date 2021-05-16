@@ -1,5 +1,6 @@
 
 import json
+import re
 from typing import Any, Callable, Optional, Union
 from bs4 import BeautifulSoup
 import bs4
@@ -150,7 +151,8 @@ def getMoves(aMoves: PAMoves):
                 level = rawVersion["level_learned_at"]
                 methods.append((version, method, level))
         if not methods: continue # ignore unmatched versions of the game (we only want us/um)
-        moves[getName(rawMove["move"])] = methods
+        name = getName(rawMove["move"])
+        moves[name] = methods
     return moves
 
 def _addMovesFromPDB(moveSoup: BeautifulSoup, versionText: str, checkText: str, dexText: str, moves: RawMoves, *, includeNumber: bool=False):
@@ -165,8 +167,9 @@ def _addMovesFromPDB(moveSoup: BeautifulSoup, versionText: str, checkText: str, 
     for number, tr in enumerate(elem.findAll("tr")):
         if (tr.find("th")): continue
         
-        moveName: str = tr.find("a", class_="ent-name").getText()
-        moveName = moveName.lower().replace(" ", "-").replace(",", "-")
+        moveName: str = tr.find("a", class_="ent-name")["href"].split("/")[2].lower()
+        if moveName == "vise-grip":
+            moveName = "vice-grip"
         if not moveName in moves:
             moves[moveName] = []
         number = 0
@@ -265,14 +268,14 @@ def getMove(aMove: PAMove):
     move: RawMove = {}
 
     move["name"] = getNameFromLangs(aMove["names"])
+    move["clas"] = getName(aMove["damage_class"]) if aMove["damage_class"] else None
     move["typ"] = getName(aMove["type"])
     move["pow"] = aMove["power"]
     move["acc"] = aMove["accuracy"]
-    move["clas"] = getName(aMove["damage_class"]) if aMove["damage_class"] else None
+    move["pp"] = aMove["pp"]
     move["effect"] = getEffect(aMove["effect_entries"])
     move["effectChance"] = aMove["effect_chance"]
     move["target"] = getName(aMove["target"])
-    move["pp"] = aMove["pp"]
     move["gen"] = getName(aMove["generation"])
     
     return move
@@ -286,6 +289,55 @@ def getEffect(a: PAEffects):
     for lang in a:
         if getName(lang["language"]) == "en":
             return lang["effect"]
+
+def _getNumForTD(d: bs4.Tag) -> tuple[Union[int, None], bs4.Tag]:
+    nextD: bs4.Tag = d.find_next()
+    text: str = nextD.get_text()
+    num = int(text) if text and not text in "—∞" else None
+    return num, nextD
+
+suburlPat = re.compile(r"move\/(.+)$")
+def addGen8MovesToDex(movedex: dict[str, str]):
+    r = requests.get(f"https://pokemondb.net/move/generation/8")
+    soup = BeautifulSoup(r.text, "html.parser")
+    
+    table: bs4.Tag = soup.find("table", id="moves", class_="data-table")
+    tr: bs4.Tag
+    for tr in table.find_all("tr"):
+        if tr.find("th"): continue
+
+        nameD: bs4.Tag = tr.find("td", class_="cell-name")
+        nameA: bs4.Tag = nameD.find("a")
+        name = nameA["href"].split("/")[2].lower()
+        dispName: str = nameA.get_text()
+
+        typeD: bs4.Tag = nameD.find_next("td")
+        typeA: bs4.Tag = typeD.find("a")
+        typ = typeA["href"].split("/")[2].lower()
+
+        classD: bs4.Tag = typeD.find_next("td")
+        clas: str = classD["data-sort-value"]
+
+        power, powerD = _getNumForTD(classD)
+        acc, accD = _getNumForTD(powerD)
+        pp, ppD = _getNumForTD(accD)
+
+        effectD: bs4.Tag = ppD.find_next("td")
+        effect = effectD.get_text()
+
+        movedex[name] = {
+            "name": dispName,
+            "typ": typ,
+            "clas": clas,
+            "pow": power,
+            "acc": acc,
+            "pp": pp,
+            "effect": effect,
+            "effectChance": None,
+            "target": None,
+            "gen": 8
+        }
+        
 
 ####
 # Abilities
@@ -341,26 +393,38 @@ def get(url: str, func: Callable[[dict], dict]):
     print(f"Got {getName(item)} in {round(toc - tic, 2)}s")
     return item
 
+def editFile(fileName: str):
+    try:
+        return open(fileName, "x")
+    except FileExistsError:
+        return open(fileName, "w")
+
 def createNewDex(fileName: str, apiName: str, func: Callable[[dict], dict]):
     tic = time.perf_counter()
     arbitrarilyLargeNumber = 1000000
     dex = getDex(f"https://pokeapi.co/api/v2/{apiName}?limit={arbitrarilyLargeNumber}", func)
-    try:
-        f = open(fileName, "x")
-    except FileExistsError:
-        f = open(fileName, "w")
-    json.dump(dex, f)
+    with editFile(fileName) as f:
+        json.dump(dex, f)
     toc = time.perf_counter()
-    print(f"Built dex for {apiName} in {round(toc - tic, 2)}s")
-    f.close()
+    print(f"Built dex for {apiName} in {round((toc - tic)/60, 2)}m")
+
+def completeMovedex(movedexSource: str, writeSource: Optional[str]):
+    """ This doesn't need to be here, pokemondb is stupid and decided to spell "Vice Grip" as "Vise Grip". """
+    if not writeSource: writeSource = movedexSource
+    with open(movedexSource, "r") as f:
+        movedex = json.load(f)
+    addGen8MovesToDex(movedex)
+    with editFile(writeSource) as f:
+        json.dump(movedex, f)
 
 def createNew(apiName: str, itemName: str, func: Callable[[dict], dict]):
     item = get(f"https://pokeapi.co/api/v2/{apiName}/{itemName}", func)
     return item
 
 def main():
-    createNewDex("./pokedex.json", "pokemon", getPokemon)
+    #createNewDex("./pokedex.json", "pokemon", getPokemon)
     #createNewDex("./movedex.json", "move", getMove)
+    completeMovedex("./sources/dexes/movedex.json", "./movedex.json")
     #createNewDex("./abilitydex.json", "ability", getAbility)
 
 if __name__ == "__main__":

@@ -1,11 +1,11 @@
 
-from typing import Any, Callable, Coroutine, Generic, Optional, Type, TypeVar
+from typing import Any, Callable, Coroutine, Generic, Optional, Type, TypeVar, Union
 from discord.ext import commands
 
-from Dexes import Ability, Dex, DexItem, Move, POKEDEX, MOVEDEX, ABILITYDEX, Pokemon
+from Dexes import Ability, Dex, DexItem, LearnedMove, Move, POKEDEX, MOVEDEX, ABILITYDEX, Pokemon
 from sources.text import DEX as D
 import re
-from utils import Fail, paginate, shuffleWord
+from utils import Fail, getMuOSEmbed, paginate, shuffleWord
 
 Ctx = commands.Context
 M = TypeVar("M", bound="DexItem")
@@ -22,6 +22,8 @@ class Mode():
     
     def __repr__(self):
         return f"<{self.__class__.__name__} {self.name}>"
+    def getName(self):
+        return self.name
     
 class Qualifier(Mode, Generic[M]):
     def __init__(self, names: list[str], key: Callable[[set[str]], Callable[[M], bool]]):
@@ -58,16 +60,19 @@ class BaseMode(Mode, Generic[M]):
         return self.sender
     
     def getQualifier(self, target: str):
-        for mode in self.extraModes:
-            if mode.match(target):
-                return mode
+        for extraMode in self.extraModes:
+            if extraMode.match(target):
+                return extraMode
         return None
     
     def getModifier(self, target: str):
-        for mode in self.modifiers:
-            if mode.match(target):
-                return mode
+        for modifier in self.modifiers:
+            if modifier.match(target):
+                return modifier
         return None
+    
+    def getModifiers(self):
+        return self.modifiers
 
 def getItemsSender(single: Callable[[set[M]], list], multi: Callable[[str, set[M]], list]):
     async def sendItems(ctx: Ctx, query: str, items: set[M]):
@@ -84,11 +89,11 @@ POKEMON = BaseMode(
     [
         Qualifier(
             ["move", "moves"],
-            lambda targets: lambda pkmn: pkmn.hasMove(targets)
+            lambda targets: lambda pkmn: pkmn.searchMoves(targets)
         ),
         Qualifier(
             ["ability", "abilities"],
-            lambda targets: lambda pkmn: pkmn.hasAbility(targets)
+            lambda targets: lambda pkmn: pkmn.searchAbilities(targets)
         ),
         Qualifier(
             ["type", "types"],
@@ -152,6 +157,8 @@ def matchType(typ: Type[DexItem]):
 
 withPat = re.compile(r"\s+with\s+")
 andOrPat = re.compile(r"(?:\s*,)?((?:\s+and\s+)|(?:\s+or\s+))|(?:\s*,\s*)")
+andOrSplitPat = re.compile(r"(?:\s*,)?(?:\s+and\s+)|(?:\s+or\s+)|(?:\s*,\s*)")
+forPat = re.compile(r"\s+for\s+")
 
 class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
     def __init__(self, bot: commands.Bot):
@@ -172,7 +179,7 @@ class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
             modeStr, qualifiersStr = split
         else:
             # The string with the type of item to match; everything after
-            modeStr = query
+            modeStr, qualifiersStr = query, ""
         # Split by space to collect modifiers to the item to match (baby, legendary, etc.)
         split = spacePat.split(modeStr)
         # List of modifiers.
@@ -185,9 +192,9 @@ class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
             matches |= set(self.specificSearch(query))
             # If we don't have a mode and the specific search fails, error.
             if not matches:
-                raise Fail(D.ERR.NO_MODE(query))
+                raise Fail(D.ERR.NO_MODE(query, [m.getName() for m in MODES]))
         else:
-            matches = self.modeSearch(mode, qualifiersStr, query)
+            matches = self.modeSearch(mode, qualifiersStr.lower().strip(), modifs, query)
         if not matches:
             await ctx.send(D.INFO.NO_MATCH(query))
             return
@@ -209,10 +216,18 @@ class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
         if ability: return [ability]
         return []
     
-    def modeSearch(self, mode: BaseMode, qualifiersStr: str, query: str):
+    def modeSearch(self, mode: BaseMode, qualifiersStr: str, modifiers: list[str], query: str):
         matches = set()
         # If we do have a mode, get the dex from the mode.
         dex = mode.getDex()
+
+        for modifierStr in modifiers:
+            modifier = mode.getModifier(modifierStr)
+            if not modifier:
+                raise Fail(D.ERR.BAD_MODIFIER(query, modifierStr, mode.getName(), [m.getName() for m in mode.getModifiers()]))
+            key = modifier.getKey()
+            extraMatches = dex.collect(key)
+            matches |= extraMatches
         
         # The attributes each matched item must have.
         qualifier: Optional[Qualifier] = None
@@ -223,11 +238,11 @@ class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
         # Make sure no other operators exist - can't mix.
         for otherOp in opFinds:
             if otherOp != op: raise Fail(D.ERR.MIXING_OPS(query))
-        print(op)
+            re.split
 
         # Iterate through each qualifier.
-        for qualifierStr in andOrPat.split(qualifiersStr):
-            if not qualifierStr or not qualifierStr.strip(): continue
+        for qualifierStr in andOrSplitPat.split(qualifiersStr):
+            if not qualifierStr: continue
             # Split by the first space - the first word of the qualifier string can be the qualifier mode.
             split = spacePat.split(qualifierStr, 1)
             # We want to be able to use the same qualifier mode if none exists after the first.
@@ -238,7 +253,6 @@ class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
                 rest = qualifierStr
             # If the first qualifier string doesn't have a qualifier mode, fail.
             if not qualifier: raise Fail(D.ERR.NO_EXTRA_MODE(query, qualifierStr))
-            print(rest)
             key = qualifier.getKey()(rest)
             extraMatches = dex.collect(key)
             if op == "or" or not op or not matches:
@@ -248,3 +262,37 @@ class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
                 if not matches:
                     break
         return matches
+    
+    @commands.command(**D.CHECK.meta)
+    async def check(self, ctx: Ctx, *, toCheck: str):
+        split = forPat.split(toCheck, 1)
+        if not len(split) == 2:
+            raise Fail(D.ERR.NO_FOR)
+        targetPkmnStr, movesStr = split
+        targetMovesStrs = andOrSplitPat.split(movesStr)
+        if not targetPkmnStr:
+            raise Fail(D.ERR.NO_PKMN)
+        if not targetMovesStrs:
+            raise Fail(D.ERR.NO_MOVES)
+
+        shuffled = shuffleWord(targetPkmnStr.lower())
+        targetPkmn = POKEDEX.searchByNames(shuffled)
+        if not targetPkmn:
+            raise Fail(D.ERR.PKMN_NOT_FOUND(targetPkmnStr))
+        targetMoves: list[Move] = []
+        for moveStr in targetMovesStrs:
+            shuffled = shuffleWord(moveStr.lower())
+            move = MOVEDEX.searchByNames(shuffled)
+            if not move:
+                raise Fail(D.ERR.MOVE_NOT_FOUND(moveStr))
+            targetMoves.append(move)
+        
+        results: list[Union[Move, LearnedMove]] = []
+        for move in targetMoves:
+            if targetPkmn.hasMove(move):
+                learnedMove = targetPkmn.getMove(move.getName())
+                results.append(learnedMove)
+            else:
+                results.append(move)
+        
+        await ctx.send(embed=getMuOSEmbed(**D.INFO.RESULT_HAS(results)))
