@@ -37,3 +37,22 @@ class PWU:
         SEAN_DAB = "<:SeanDab:777619661285621774>"
         ANGRY_SLINK = "<:AngrySlink:749492163015999510>"
         ZANGOOSE_HUG = "<:ZangooseHug:731270215870185583>"
+
+import json
+
+with open("./sources/rpchannels.json", "r") as f:
+    RP_CHANNELS = set(json.load(f))
+
+def addRPChannel(chID: int):
+    if chID in RP_CHANNELS:
+        return False
+    RP_CHANNELS.add(chID)
+    with open("./sources/rpchannels.json", "w") as f:
+        json.dump(list(RP_CHANNELS), f)
+    return True
+
+def removeRPChannel(chID: int):
+    if not chID in RP_CHANNELS:
+        return False
+    RP_CHANNELS.discard(chID)
+    return True

@@ -1,6 +1,5 @@
 
 import asyncio
-#from solos import printNLP
 import datetime as dt
 import discord
 from discord.ext import commands, tasks
@@ -10,7 +9,9 @@ from typing import Union
 
 from CogDex import CogDex
 from CogMod import CogMod
+from CogRoleplay import CogRoleplay
 from Help import Help
+#from solos import printNLP
 from sources.general import BOT_PREFIX, MENTION_ME
 from sources.ids import TEST
 from utils import Fail, getRandomAvatarImageAndTime, handlePaginationReaction
@@ -38,6 +39,7 @@ client = commands.Bot(
 )
 cogDex = CogDex(client)
 client.add_cog(cogDex)
+cogRoleplay = CogRoleplay(client)
 cogMod = CogMod()
 client.add_cog(cogMod)
 
@@ -61,8 +63,7 @@ async def on_ready():
 
 @client.event
 async def on_message(message: discord.Message):
-    if message.author == client.user:
-        return
+    if message.author == client.user: return
     if message.author.bot:
         """
         print(f"[{str(dt.datetime.now().time())[:-7]}, #{message.channel.name}] {message.author.name}: {message.content}")
@@ -70,6 +71,7 @@ async def on_message(message: discord.Message):
         """
     else:
         await client.process_commands(message)
+    await cogRoleplay.onMessage(message)
 
 @client.event
 async def on_message_delete(message: discord.Message):
@@ -81,6 +83,7 @@ async def on_reaction_add(reaction: discord.Reaction, user: Union[discord.User, 
     #print("on_reaction_add")
     if user.bot: return
     await handlePaginationReaction(reaction.message, reaction.emoji, user)
+    await cogRoleplay.onReaction(reaction, user)
 
 @client.event
 async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
