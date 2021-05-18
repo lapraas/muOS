@@ -26,11 +26,11 @@ SCENE = Cmd(
 )
 
 class ERR:
-    NOT_IN_RP_CHANNEL = "This command can't be used in a channel that's not a RP channel."
+    NOT_IN_RP_CHANNEL = "This command can't be used in a channel that's not for RP."
 
 class INFO:
     SCENE_BREAK = "<><><><><>"
     SCENE_PAUSED = "(Scene paused)"
-    SCENE_RESUMED = "(Scene resumed)"
+    SCENE_RESUMED = "(Scene unpaused)"
     OTHER_USER = lambda message, oid: f"You can't alter posts other users have made. The message {message} belongs to <@{oid}>."
     ADD_RP_CHANNEL_SUCCESS = lambda channel: f"Successfully added <#{channel}> as a RP channel"

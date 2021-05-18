@@ -31,12 +31,15 @@ class CogRoleplay(commands.Cog):
     async def onMessage(self, message: discord.Message):
         if message.author.bot:
             replace = None
-            if "<><>" in message.content:
-                replace = R.INFO.SCENE_BREAK
-            if "scene paused" in message.content.lower():
-                replace = R.INFO.SCENE_PAUSED
-            if "scene unpaused" in message.content.lower():
-                replace = R.INFO.SCENE_RESUMED
+            if any(x in message.content for x in
+                ["<><>"]
+            ): replace = R.INFO.SCENE_BREAK
+            if any(x in message.content.lower() for x in
+                ["scene paused", "scene on hold"]
+            ): replace = R.INFO.SCENE_PAUSED
+            if any(x in message.content.lower() for x in
+                ["scene unpaused", "scene resumed"]
+            ): replace = R.INFO.SCENE_RESUMED
             if replace:
                 await message.delete()
                 newMessage: discord.Message = await message.channel.send(replace).id

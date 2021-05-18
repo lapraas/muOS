@@ -18,37 +18,48 @@ class TEST:
     class ROLE:
         MOD = 804128653687783424
 
-class PWU:
-    ID = 546872429621018635
+class IOA:
+    ID = 827334108094005248
 
-    class CHANNEL:
-        MISC = 546881598189207583
-        HUMOR = 547580983860396051
-        BOT_SPAM = 555898099747389479
-        PLAZA = 799018833364123668
-    
     class ROLE:
-        MOD = 550518609714348034
-        JOKE_OWNER = 826971344834265128
-    
-    class EMOTE:
-        AGONIZED_AXEW = "<:AgonizedAxew:698049607862714428>"
-        LAUGHING_HENRY = "<:LaughingHenry:714352502358802455>"
-        SEAN_DAB = "<:SeanDab:777619661285621774>"
-        ANGRY_SLINK = "<:AngrySlink:749492163015999510>"
-        ZANGOOSE_HUG = "<:ZangooseHug:731270215870185583>"
+        MOD = 827339658282270800
+        DM = 828822110372757575
 
 import json
 
-with open("./sources/rpchannels.json", "r") as f:
-    RP_CHANNELS = set(json.load(f))
+class JIDS:
+    rpChannels: set[int]
+    def __init__(self, j: dict[str, set[int]]):
+        self.j = j
+    
+    @classmethod
+    def fromJson(cls, raw):
+        j = {}
+        for setName in raw:
+            if setName in cls.__dict__:
+                pass
+            j[setName] = set(j[setName])
+        return cls(j)
+    
+    def _rpChannels(self):
+        if not JIDS.rpChs in self.j: self.j[JIDS.rpChs] = set()
+        return self.j[JIDS.rpChs]
+    
+    def addRPChannel(self, chID: int):
+        if not self.j[JIDS.rpChs]: self.j[JIDS.rpChs] = set()
+        if chID in self.j[JIDS.rpChs]: return False
+        self.j
+
+with open("./sources/ids.json", "r") as f:
+    _J = json.load(f)
+    RP_CHANNELS = set(_J["rp-channels"])
 
 def addRPChannel(chID: int):
     if chID in RP_CHANNELS:
         return False
     RP_CHANNELS.add(chID)
-    with open("./sources/rpchannels.json", "w") as f:
-        json.dump(list(RP_CHANNELS), f)
+    with open("./sources/ids.json", "w") as f:
+        json.dump(_J, f)
     return True
 
 def removeRPChannel(chID: int):
