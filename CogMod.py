@@ -2,10 +2,13 @@
 from typing import Optional
 import discord
 from discord.ext import commands
-import sources.ids as IDS
-import sources.text as T
+from sources.ids import IDs, IDS
+import sources.text.mod as M
 
-M = T.MOD
+Ctx = commands.Context
+
+def twitchEmote(ctx: Ctx):
+    return any(role in ctx.author.roles for role in IDS.getAll(IDs.modRoles))
 
 class MiniEntry:
     def __init__(self, userID: int, targetUserID: int, count: int):
@@ -13,7 +16,7 @@ class MiniEntry:
         self.targetUserID = targetUserID
         self.count = count
 
-class CogMod(commands.Cog, **M.cog):
+class CogMod(commands.Cog, name=M.COG.NAME, description=M.COG.DESCRIPTION):
     def __init__(self):
         self.oldDeleteEntries: dict[int, MiniEntry] = {}
     
@@ -64,10 +67,24 @@ class CogMod(commands.Cog, **M.cog):
             #if message.guild.id == 546872429621018635 and not 550518609714348034 in [role.id for role in deleter.roles]: return
             
             channel: discord.TextChannel = message.guild.get_channel(IDS.LOG_CHANNEL_IDS[message.guild.id])
-            await channel.send(M.deletedMessageText(message.author.id, deleter.id, message.jump_url))
+            await channel.send(M.INFO.DELETED_MESSAGE(message.author.id, deleter.id, message.jump_url))
             await channel.send(
                 message.content,
                 embed=message.embeds[0] if message.embeds else None,
                 files=[await attachment.to_file(use_cached=True) for attachment in message.attachments]
             )
         self.oldDeleteEntries = newDeleteEntries
+    
+    async def addModRole(self, ctx: Ctx, *, role: discord.Role):
+        res = IDS.add(IDs.modRoles, role.id)
+        if res:
+            await ctx.send(M.INFO)
+
+    @commands.command(**M.ADD_RP_CHANNEL.meta, hidden=True)
+    @commands.check(twitchEmote)
+    async def addRPChannel(self, ctx: Ctx, *, channel: discord.TextChannel):
+        res = IDS.add(IDs.rpChannels, channel.id)
+        if res:
+            await ctx.send(M.INFO.ADD_RP_CHANNEL_SUCCESS(channel.id))
+        else:
+            await ctx.send(M.INFO.ADD_RP_CHANNEL_FAIL(channel.id))

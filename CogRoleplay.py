@@ -1,6 +1,6 @@
 
 from utils import Fail
-from sources.ids import RP_CHANNELS, addRPChannel
+from sources.ids import IDS, IDs, RP_CHANNELS, addRPChannel
 import discord
 from discord.ext import commands
 import datetime as dt
@@ -64,16 +64,9 @@ class CogRoleplay(commands.Cog):
                 return
             await reaction.remove(user)
     
-    @commands.command()
-    @commands.check()
-    async def addRPChannel(self, ctx: Ctx, *, channel: discord.TextChannel):
-        res = addRPChannel(channel.id)
-        if res:
-            await ctx.send(R.INFO.ADD_RP_CHANNEL_SUCCESS(channel.id))
-    
     @commands.command(**R.SCENE.meta)
     async def scene(self, ctx: Ctx, *, op: str):
-        if not ctx.channel.id in RP_CHANNELS:
+        if not IDS.check(IDs.rpChannels, ctx.channel.id):
             raise Fail(R.ERR.NOT_IN_RP_CHANNEL)
         if any(x in op for x in ["pause", "hold"]):
             message = ctx.send(R.INFO.SCENE_PAUSED)

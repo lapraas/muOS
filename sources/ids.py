@@ -44,24 +44,34 @@ class IDLists:
     @classmethod
     def _error(cls, name: str):
         return JIDsKeyError(name, cls)
+    
+    def _check(self, target: str):
+        if not target in self.__class__.__annotations__:
+            raise self._error(target)
 
     def _write(self, idsFile: str="./source/ids.json"):
         with open(idsFile, "w") as f:
             json.dump(self.j, f)
     
-    def add(self, to: str, value: Any):
-        if not to in self.__class__.__annotations__:
-            raise self._error(to)
-        if value in self.j[to]:
+    def getAll(self, target):
+        self._check(target)
+        return self.j[target]
+        
+    def check(self, target: str, value: int):
+        self._check(target)
+        return value in self.j[target]
+    
+    def add(self, to: str, value: int):
+        self._check(to)
+        if not self.check(to, value):
             return False
         self.j[to].add(value)
         self._write()
         return True
     
-    def remove(self, from: str, value: Any):
-        if not from in self.__class__.__annotations__:
-            raise self._error(from)
-        if not value in self.j[from]:
+    def remove(self, from: str, value: int):
+        self._check(from)
+        if not self.check(from, value):
             return False
         self.j[from].discard(value)
         self._write()
