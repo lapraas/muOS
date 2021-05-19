@@ -1,4 +1,8 @@
 
+from __future__ import annotations
+import json
+from typing import Any, Type
+
 MY_USER_ID = 194537964657704960
 
 BRONZOS_USER_ID = 824105108132200468
@@ -25,45 +29,49 @@ class IOA:
         MOD = 827339658282270800
         DM = 828822110372757575
 
-import json
+class JIDsKeyError(KeyError):
+    def __init__(self, name: str, cls: Type[IDLists]) -> None:
+        super().__init__(f"Name {name} did not match any variables for the class {cls}")
 
-class JIDS:
-    rpChannels: set[int]
+class IDLists:
     def __init__(self, j: dict[str, set[int]]):
+        for name in j:
+            if not name in self.__class__.__dict__:
+                raise self.__class__._error(name)
+            j[name] = set(j[name])
         self.j = j
     
     @classmethod
-    def fromJson(cls, raw):
-        j = {}
-        for setName in raw:
-            if setName in cls.__dict__:
-                pass
-            j[setName] = set(j[setName])
-        return cls(j)
+    def _error(cls, name: str):
+        return JIDsKeyError(name, cls)
+
+    def _write(self, idsFile: str="./source/ids.json"):
+        with open(idsFile, "w") as f:
+            json.dump(self.j, f)
     
-    def _rpChannels(self):
-        if not JIDS.rpChs in self.j: self.j[JIDS.rpChs] = set()
-        return self.j[JIDS.rpChs]
+    def add(self, to: str, value: Any):
+        if not to in self.__class__.__annotations__:
+            raise self._error(to)
+        if value in self.j[to]:
+            return False
+        self.j[to].add(value)
+        self._write()
+        return True
     
-    def addRPChannel(self, chID: int):
-        if not self.j[JIDS.rpChs]: self.j[JIDS.rpChs] = set()
-        if chID in self.j[JIDS.rpChs]: return False
-        self.j
+    def remove(self, from: str, value: Any):
+        if not from in self.__class__.__annotations__:
+            raise self._error(from)
+        if not value in self.j[from]:
+            return False
+        self.j[from].discard(value)
+        self._write()
+        return True
+
+class IDs(IDLists):
+    modRoles = "mod-roles"
+    
+    dmRoles = "dm-roles"
+    rpChannels = "rp-channels"
 
 with open("./sources/ids.json", "r") as f:
-    _J = json.load(f)
-    RP_CHANNELS = set(_J["rp-channels"])
-
-def addRPChannel(chID: int):
-    if chID in RP_CHANNELS:
-        return False
-    RP_CHANNELS.add(chID)
-    with open("./sources/ids.json", "w") as f:
-        json.dump(_J, f)
-    return True
-
-def removeRPChannel(chID: int):
-    if not chID in RP_CHANNELS:
-        return False
-    RP_CHANNELS.discard(chID)
-    return True
+    IDS = IDs(json.load(f))
