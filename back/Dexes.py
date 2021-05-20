@@ -1,8 +1,9 @@
 
 import json
-from pokeapi import RawEvolutions, RawMoves, RawStats
 import re
 from typing import Callable, Generic, Optional, Type, TypeVar
+
+from back.pokeapi import RawEvolutions, RawMoves, RawStats
 
 class DexItem:
     def __init__(self, name: str, fancy: str):

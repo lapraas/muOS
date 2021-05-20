@@ -1,9 +1,16 @@
 
 from __future__ import annotations
+
 import json
-from typing import Any, Type
+from typing import Type, overload
+
+from discord.ext import commands
+
+Ctx = commands.Context
 
 MY_USER_ID = 194537964657704960
+def meCheck(ctx: Ctx):
+    return ctx.author.id == MY_USER_ID
 
 BRONZOS_USER_ID = 824105108132200468
 BRONZOS_BETA_USER_ID = None
@@ -85,11 +92,22 @@ class IDLists:
         self._write()
         return True
 
+def _checkRoles(ctx: Ctx, roleList: set[int]):
+    return any(roleid in [role.id for role in ctx.author.roles] for roleid in roleList)
+
 class IDs(IDLists):
-    modRoles = "mod-roles"
-    
-    dmRoles = "dm-roles"
     rpChannels = "rp-channels"
+
+    modRoles = "mod-roles"
+    @staticmethod
+    def modCheck(ctx: Ctx):
+        if meCheck(ctx): return True
+        return _checkRoles(ctx, IDS.getAll(IDs.modRoles))
+    dmRoles = "dm-roles"
+    @staticmethod
+    def dmCheck(ctx: Ctx):
+        if IDs.modCheck(ctx): return True
+        return _checkRoles(ctx, IDS.getAll(IDs.dmRoles))
 
 with open("./sources/ids.json", "r") as f:
     IDS = IDs(json.load(f))

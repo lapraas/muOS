@@ -1,9 +1,11 @@
-from typing import Union
-from bs4 import BeautifulSoup
+
 import json
 import random
 import re
+from typing import Union
+
 import requests
+from bs4 import BeautifulSoup
 
 pokedex = {}
 

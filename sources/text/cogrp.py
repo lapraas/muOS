@@ -1,5 +1,5 @@
 
-from sources.general import Cmd, BOT_PREFIX as mew
+from back.general import Cmd, BOT_PREFIX as mew
 
 class COG:
     NAME = "Roleplay Cog"

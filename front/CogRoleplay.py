@@ -1,13 +1,12 @@
 
-from CogMod import dmCheck
-from utils import Fail
-from sources.ids import IDS, IDs
-import discord
-from discord.ext import commands
 import datetime as dt
 from typing import Optional, Union
 
+import discord
 import sources.text.cogrp as R
+from back.ids import IDS, IDs
+from back.utils import Fail
+from discord.ext import commands
 
 Ctx = commands.Context
 
@@ -81,6 +80,5 @@ class CogRoleplay(commands.Cog):
         self.listen[message.id] = ctx.author.id
     
     @commands.command()
-    @commands.check(dmCheck)
     async def addTupper(self, ctx: Ctx, *, nameAndURL: str):
         pass

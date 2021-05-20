@@ -1,5 +1,5 @@
 
-from Dexes import Pokemon
+from back.Dexes import Pokemon
 
 g1 = "red-blue-yellow"
 lv = "level-up"

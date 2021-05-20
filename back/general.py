@@ -1,8 +1,10 @@
 
 from __future__ import annotations
+
 import math
 from typing import Callable, Optional, TypeVar, Union
-import sources.ids as IDS
+
+import back.ids as IDS
 
 BOT_PREFIX = "mew."
 

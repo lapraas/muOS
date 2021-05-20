@@ -1,27 +1,15 @@
 
 #from __future__ import annotations
 # ^ has to be commented out because of some bullshit in the core file
-from sources.general import Cmd
-import discord
-from discord.ext import commands
-from typing import Any, Callable, Coroutine, Optional, Type, TypeVar
+from typing import Callable, Coroutine, Optional, Type, TypeVar
 
-from sources.ids import IDs, IDS, LOG_CHANNEL_IDS, MY_USER_ID
+import discord
 import sources.text.mod as M
+from back.general import Cmd
+from back.ids import IDS, LOG_CHANNEL_IDS, IDs, meCheck
+from discord.ext import commands
 
 Ctx = commands.Context
-
-def _checkRoles(ctx: Ctx, roleList: set[int]):
-    return any(roleid in [role.id for role in ctx.author.roles] for roleid in roleList)
-
-def meCheck(ctx: Ctx):
-    return ctx.author.id == MY_USER_ID
-def modCheck(ctx: Ctx):
-    if meCheck(ctx): return True
-    return _checkRoles(ctx, IDS.getAll(IDs.modRoles))
-def dmCheck(ctx: Ctx):
-    if modCheck(ctx): return True
-    return _checkRoles(ctx, IDS.getAll(IDs.dmRoles))
 
 class MiniEntry:
     def __init__(self, userID: int, targetUserID: int, count: int):
@@ -118,13 +106,13 @@ class CogMod(commands.Cog, name=M.COG.NAME, description=M.COG.DESCRIPTION):
             lambda role: role.id
         )
         self.makeIDChanger(
-            modCheck, IDs.dmRoles, discord.Role,
+            IDs.modCheck, IDs.dmRoles, discord.Role,
             M.ADD_DM_ROLE, lambda ctx, res, role: ctx.send(M.INFO.ADD_DM_ROLE(role.name, res)),
             M.RM_DM_ROLE, lambda ctx, res, role: ctx.send(M.INFO.RM_DM_ROLE(role.name, res)),
             lambda role: role.id
         )
         self.makeIDChanger(
-            modCheck, IDs.rpChannels, discord.TextChannel,
+            IDs.modCheck, IDs.rpChannels, discord.TextChannel,
             M.ADD_RP_CHANNEL, lambda ctx, res, channel: ctx.send(M.INFO.ADD_RP_CHANNEL(channel.id, res)),
             M.RM_RP_CHANNEL, lambda ctx, res, channel: ctx.send(M.INFO.RM_RP_CHANNEL(channel.id, res)),
             lambda channel: channel.id

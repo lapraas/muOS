@@ -1,11 +1,12 @@
 
 import json
 import re
+import time
 from typing import Any, Callable, Optional, Union
-from bs4 import BeautifulSoup
+
 import bs4
 import requests
-import time
+from bs4 import BeautifulSoup
 
 NamedResource = dict[str, str]
 

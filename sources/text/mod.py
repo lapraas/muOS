@@ -1,5 +1,5 @@
 
-from sources.general import Cmd
+from back.general import Cmd
 
 class COG:
     NAME = "Moderation Cog"

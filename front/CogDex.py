@@ -1,15 +1,12 @@
 
 import re
-from typing import (Any, Callable, Coroutine, Generic, Optional, Type, TypeVar,
-                    Union)
+from typing import Any, Callable, Coroutine, Generic, Optional, Type, TypeVar, Union
 
+from back.Dexes import ABILITYDEX, MOVEDEX, POKEDEX, Ability, Dex, DexItem, LearnedMove, Move, Pokemon
+from back.utils import Fail, getMuOSEmbed, paginate, shuffleWord
 from discord.ext import commands
-
-from Dexes import (ABILITYDEX, MOVEDEX, POKEDEX, Ability, Dex, DexItem,
-                   LearnedMove, Move, Pokemon)
-from sources.pkmn import MISSINGNO
+from back.pkmn import MISSINGNO
 from sources.text import DEX as D
-from utils import Fail, getMuOSEmbed, paginate, shuffleWord
 
 Ctx = commands.Context
 M = TypeVar("M", bound="DexItem")

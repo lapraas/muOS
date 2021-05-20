@@ -1,5 +1,5 @@
 
-from sources.general import BOT_PREFIX, NEWLINE, stripLines, BOT_PREFIX as bel
+from back.general import BOT_PREFIX, NEWLINE, stripLines, BOT_PREFIX as bel
 
 cogEmbed = lambda cogName, cogDescription, commandNames: {
     "title": cogName,

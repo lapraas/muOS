@@ -1,10 +1,11 @@
 
 from typing import Callable, Mapping, Optional, Union
-from utils import getMuOSEmbed, paginateDEPR
+
 import discord
+import sources.text as T
+from back.utils import getMuOSEmbed, paginateDEPR
 from discord.ext import commands
 
-import sources.text as T
 
 def getNonhiddenCommands(ctx: commands.Context, commands: list[commands.Command], getter: Callable[[commands.Command], Union[commands.Command, str]]=lambda x: x) -> list[Union[commands.Command, str]]:
     print([command.name for command in commands])

@@ -1,7 +1,7 @@
  
 from typing import Union
-from Dexes import LearnedMove, Method, Move, Pokemon
-from sources.general import Cmd, EMPTY, NEWLINE, chunks, evenChunks, padItems
+from back.Dexes import LearnedMove, Method, Move, Pokemon
+from back.general import Cmd, EMPTY, NEWLINE, chunks, evenChunks, padItems
 
 class COG:
     NAME = "Dex Cog"

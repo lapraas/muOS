@@ -1,20 +1,20 @@
  
 import asyncio
 import datetime as dt
-import discord
-from discord.ext import commands, tasks
 import os
 import traceback
 from typing import Union
 
-from CogDex import CogDex
-from CogMod import CogMod
-from CogRoleplay import CogRoleplay
-from Help import Help
-#from solos import printNLP
-from sources.general import BOT_PREFIX, MENTION_ME
-from sources.ids import TEST
-from utils import Fail, getRandomAvatarImageAndTime, onReaction
+import discord
+from discord.ext import commands, tasks
+
+from back.general import BOT_PREFIX, MENTION_ME
+from back.ids import TEST
+from back.utils import Fail, getRandomAvatarImageAndTime, onReaction
+from front.CogDex import CogDex
+from front.CogMod import CogMod
+from front.CogRoleplay import CogRoleplay
+from front.Help import Help
 
 intents: discord.Intents = discord.Intents.default()
 intents.members = True
@@ -66,10 +66,7 @@ async def on_ready():
 async def on_message(message: discord.Message):
     if message.author == client.user: return
     if message.author.bot:
-        """
-        print(f"[{str(dt.datetime.now().time())[:-7]}, #{message.channel.name}] {message.author.name}: {message.content}")
-        printNLP(message.content)
-        """
+        pass
     else:
         await client.process_commands(message)
     await cogRoleplay.onMessage(message)

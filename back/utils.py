@@ -1,13 +1,15 @@
 
-import re
-import discord
-from discord.ext import commands
 import json
 import random
+import re
 from typing import Optional, Union
 
-from sources.general import EMPTY, GRAPHICS, stripLines
+import discord
 import sources.text.utils as U
+from discord.ext import commands
+
+from back.general import EMPTY, GRAPHICS, stripLines
+
 
 class Fail(Exception):
     def __init__(self, message: str):
