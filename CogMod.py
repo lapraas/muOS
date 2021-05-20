@@ -1,5 +1,6 @@
 
-from __future__ import annotations
+#from __future__ import annotations
+# ^ has to be commented out because of some bullshit in the core file
 from sources.general import Cmd
 import discord
 from discord.ext import commands
