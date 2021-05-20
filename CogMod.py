@@ -1,14 +1,26 @@
 
-from typing import Optional
+from __future__ import annotations
+from sources.general import Cmd
 import discord
 from discord.ext import commands
-from sources.ids import IDs, IDS
+from typing import Any, Callable, Coroutine, Optional, Type, TypeVar
+
+from sources.ids import IDs, IDS, LOG_CHANNEL_IDS, MY_USER_ID
 import sources.text.mod as M
 
 Ctx = commands.Context
 
-def twitchEmote(ctx: Ctx):
-    return any(role in ctx.author.roles for role in IDS.getAll(IDs.modRoles))
+def _checkRoles(ctx: Ctx, roleList: set[int]):
+    return any(roleid in [role.id for role in ctx.author.roles] for roleid in roleList)
+
+def meCheck(ctx: Ctx):
+    return ctx.author.id == MY_USER_ID
+def modCheck(ctx: Ctx):
+    if meCheck(ctx): return True
+    return _checkRoles(ctx, IDS.getAll(IDs.modRoles))
+def dmCheck(ctx: Ctx):
+    if modCheck(ctx): return True
+    return _checkRoles(ctx, IDS.getAll(IDs.dmRoles))
 
 class MiniEntry:
     def __init__(self, userID: int, targetUserID: int, count: int):
@@ -16,9 +28,13 @@ class MiniEntry:
         self.targetUserID = targetUserID
         self.count = count
 
+T = TypeVar("T", bound="discord.Snowflake")
 class CogMod(commands.Cog, name=M.COG.NAME, description=M.COG.DESCRIPTION):
-    def __init__(self):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
         self.oldDeleteEntries: dict[int, MiniEntry] = {}
+
+        self.setup()
     
     @staticmethod
     async def getNewEntries(guild: discord.Guild) -> dict[int, MiniEntry]:
@@ -36,13 +52,13 @@ class CogMod(commands.Cog, name=M.COG.NAME, description=M.COG.DESCRIPTION):
         
         return newDeleteEntries
     
-    async def handleOnReady(self, guild: discord.Guild):
+    async def onReady(self, guild: discord.Guild):
         self.oldDeleteEntries = await CogMod.getNewEntries(guild)
     
-    async def handleMessageDelete(self, message: discord.Message):
+    async def onMessageDelete(self, message: discord.Message):
         if (
             isinstance(message.channel, discord.DMChannel) or
-            not message.guild.id in IDS.LOG_CHANNEL_IDS or
+            not message.guild.id in LOG_CHANNEL_IDS or
             message.author.bot
         ):
             return
@@ -64,9 +80,8 @@ class CogMod(commands.Cog, name=M.COG.NAME, description=M.COG.DESCRIPTION):
                 break
         if retrievedDeleterID != None and retrievedDeleterID != message.author.id:
             deleter: discord.Member = await message.guild.fetch_member(retrievedDeleterID)
-            #if message.guild.id == 546872429621018635 and not 550518609714348034 in [role.id for role in deleter.roles]: return
             
-            channel: discord.TextChannel = message.guild.get_channel(IDS.LOG_CHANNEL_IDS[message.guild.id])
+            channel: discord.TextChannel = message.guild.get_channel(LOG_CHANNEL_IDS[message.guild.id])
             await channel.send(M.INFO.DELETED_MESSAGE(message.author.id, deleter.id, message.jump_url))
             await channel.send(
                 message.content,
@@ -75,16 +90,41 @@ class CogMod(commands.Cog, name=M.COG.NAME, description=M.COG.DESCRIPTION):
             )
         self.oldDeleteEntries = newDeleteEntries
     
-    async def addModRole(self, ctx: Ctx, *, role: discord.Role):
-        res = IDS.add(IDs.modRoles, role.id)
-        if res:
-            await ctx.send(M.INFO)
-
-    @commands.command(**M.ADD_RP_CHANNEL.meta, hidden=True)
-    @commands.check(twitchEmote)
-    async def addRPChannel(self, ctx: Ctx, *, channel: discord.TextChannel):
-        res = IDS.add(IDs.rpChannels, channel.id)
-        if res:
-            await ctx.send(M.INFO.ADD_RP_CHANNEL_SUCCESS(channel.id))
-        else:
-            await ctx.send(M.INFO.ADD_RP_CHANNEL_FAIL(channel.id))
+    def makeIDChanger(self, check: Callable[[Ctx], bool], listTarget: str, type_: Type[T],
+        addMeta: Cmd, addSender: Callable[[Ctx, bool, T], Coroutine],
+        rmMeta: Cmd, rmSender: Callable[[Ctx, bool, T], Coroutine],
+        idGetter: Callable[[T], int]
+    ):
+        @commands.command(**addMeta.meta)
+        @commands.check(check)
+        async def adder(self, ctx: Ctx, *, item: type_):
+            res = IDS.add(listTarget, idGetter(item))
+            await addSender(ctx, res, item)
+        @commands.command(**rmMeta.meta)
+        @commands.check(check)
+        async def remover(self, ctx: Ctx, *, item: type_):
+            res = IDS.remove(listTarget, idGetter(item))
+            await rmSender(ctx, res, item)
+        adder.cog = self
+        remover.cog = self
+        self.__cog_commands__ = self.__cog_commands__ + (adder, remover)
+    
+    def setup(self):
+        self.makeIDChanger(
+            meCheck, IDs.modRoles, discord.Role,
+            M.ADD_MOD_ROLE, lambda ctx, res, role: ctx.send(M.INFO.ADD_MOD_ROLE(role.name, res)),
+            M.RM_MOD_ROLE, lambda ctx, res, role: ctx.send(M.INFO.RM_MOD_ROLE(role.name, res)),
+            lambda role: role.id
+        )
+        self.makeIDChanger(
+            modCheck, IDs.dmRoles, discord.Role,
+            M.ADD_DM_ROLE, lambda ctx, res, role: ctx.send(M.INFO.ADD_DM_ROLE(role.name, res)),
+            M.RM_DM_ROLE, lambda ctx, res, role: ctx.send(M.INFO.RM_DM_ROLE(role.name, res)),
+            lambda role: role.id
+        )
+        self.makeIDChanger(
+            modCheck, IDs.rpChannels, discord.TextChannel,
+            M.ADD_RP_CHANNEL, lambda ctx, res, channel: ctx.send(M.INFO.ADD_RP_CHANNEL(channel.id, res)),
+            M.RM_RP_CHANNEL, lambda ctx, res, channel: ctx.send(M.INFO.RM_RP_CHANNEL(channel.id, res)),
+            lambda channel: channel.id
+        )

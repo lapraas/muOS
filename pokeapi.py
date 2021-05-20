@@ -190,6 +190,7 @@ def addMissedMoves(pkid: int, existingMoves: RawMoves):
     soup = BeautifulSoup(r.text, "html.parser")
     _addMovesFromPDB(soup, "ultra-sun-ultra-moon", "can be taught these attacks in Pokémon Ultra Sun & Ultra Moon", "tutor", moves)
     _addMovesFromPDB(soup, "ultra-sun-ultra-moon", "can only learn these moves in previous generations", "transfer", moves)
+    _addMovesFromPDB(soup, "ultra-sun-ultra-moon", "learns the following moves via breeding in Pokémon Ultra Sun & Ultra Moon", "egg", moves)
     for moveName in moves:
         move = moves[moveName]
         existingMoveNames = [existingMove[0] for existingMove in existingMoves]
@@ -422,9 +423,9 @@ def createNew(apiName: str, itemName: str, func: Callable[[dict], dict]):
     return item
 
 def main():
-    #createNewDex("./pokedex.json", "pokemon", getPokemon)
+    createNewDex("./pokedex.json", "pokemon", getPokemon)
     #createNewDex("./movedex.json", "move", getMove)
-    completeMovedex("./sources/dexes/movedex.json", "./movedex.json")
+    #completeMovedex("./sources/dexes/movedex.json", "./movedex.json")
     #createNewDex("./abilitydex.json", "ability", getAbility)
 
 if __name__ == "__main__":

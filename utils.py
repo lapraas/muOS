@@ -254,9 +254,8 @@ async def sendPaginator(ctx: commands.Context, paginator: Paginator):
     toListen[message.id] = paginator
     await updatePaginatedMessage(message, ctx.author, paginator)
 
-async def handlePaginationReaction(message: discord.Message, emoji: str, user: Union[discord.Member, discord.User]):
-    if not message.id in toListen:
-        return
+async def onReaction(message: discord.Message, emoji: str, user: Union[discord.Member, discord.User]):
+    if user.bot or not message.id in toListen: return
     paginator = toListen[message.id]
     
     emoji = str(emoji)

@@ -36,9 +36,13 @@ class JIDsKeyError(KeyError):
 class IDLists:
     def __init__(self, j: dict[str, set[int]]):
         for name in j:
-            if not name in self.__class__.__dict__:
-                raise self.__class__._error(name)
+            self._check(name)
             j[name] = set(j[name])
+        for cVarName in self.__class__.__dict__:
+            cVar = self.__class__.__dict__[cVarName]
+            if isinstance(cVar, str):
+                if not j.get(cVar):
+                    j[cVar] = set()
         self.j = j
     
     @classmethod
@@ -46,8 +50,8 @@ class IDLists:
         return JIDsKeyError(name, cls)
     
     def _check(self, target: str):
-        if not target in self.__class__.__annotations__:
-            raise self._error(target)
+        if not target in [s for s in self.__class__.__dict__.values() if isinstance(s, str)]:
+            raise self.__class__._error(target)
 
     def _write(self, idsFile: str="./source/ids.json"):
         with open(idsFile, "w") as f:
@@ -61,19 +65,19 @@ class IDLists:
         self._check(target)
         return value in self.j[target]
     
-    def add(self, to: str, value: int):
-        self._check(to)
-        if not self.check(to, value):
+    def add(self, target: str, value: int):
+        self._check(target)
+        if not self.check(target, value):
             return False
-        self.j[to].add(value)
+        self.j[target].add(value)
         self._write()
         return True
     
-    def remove(self, from: str, value: int):
-        self._check(from)
-        if not self.check(from, value):
+    def remove(self, target: str, value: int):
+        self._check(target)
+        if not self.check(target, value):
             return False
-        self.j[from].discard(value)
+        self.j[target].discard(value)
         self._write()
         return True
 

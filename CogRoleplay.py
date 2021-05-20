@@ -1,6 +1,6 @@
 
 from utils import Fail
-from sources.ids import IDS, IDs, RP_CHANNELS, addRPChannel
+from sources.ids import IDS, IDs
 import discord
 from discord.ext import commands
 import datetime as dt
@@ -24,8 +24,8 @@ class CogRoleplay(commands.Cog):
         for channelID in self.timers:
             lastMsgTime = self.timers[channelID]
             if now - lastMsgTime > dt.timedelta(hours=1):
-                channel = self.bot.fetch_channel(channelID)
-                newMessage: discord.Message = await channel.send()
+                channel = await self.bot.fetch_channel(channelID)
+                newMessage: discord.Message = await channel.send(R.INFO.SCENE_PAUSED)
                 self.listenTo(newMessage)
     
     async def onMessage(self, message: discord.Message):
@@ -35,7 +35,7 @@ class CogRoleplay(commands.Cog):
                 ["<><>"]
             ): replace = R.INFO.SCENE_BREAK
             if any(x in message.content.lower() for x in
-                ["scene paused", "scene on hold"]
+                ["scene paused", "scene on hold", "scene on pause"]
             ): replace = R.INFO.SCENE_PAUSED
             if any(x in message.content.lower() for x in
                 ["scene unpaused", "scene resumed"]
@@ -47,22 +47,24 @@ class CogRoleplay(commands.Cog):
             else:
                 self.timers[message.channel.id] = dt.datetime.now()
     
-    async def onReaction(self, reaction: discord.Reaction, user: Union[discord.User, discord.Member]):
-        if reaction.message.id in self.listen and not user.bot:
-            if self.listen[reaction.message.id] and user.id != self.listen[reaction.message.id]:
-                await user.send(R.INFO.OTHER_USER(reaction.message.content, self.listen[reaction.message.id]))
-            elif reaction.emoji == "❌":
-                await reaction.message.delete()
-            elif reaction.emoji == "⏸":
-                await reaction.message.edit(R.INFO.SCENE_PAUSED)
-            elif reaction.emoji == "▶️":
-                newMessage = await reaction.message.channel.send(R.INFO.SCENE_RESUMED)
-                self.listen[newMessage.id] = self.listen[reaction.message.id]
-                self.listenTo(newMessage, self.listen[reaction.message.id])
+    async def onReaction(self, message: discord.Message, emoji: str, user: Union[discord.User, discord.Member]):
+        if message.id in self.listen and not user.bot:
+            if self.listen[message.id] and user.id != self.listen[message.id]:
+                await user.send(R.INFO.OTHER_USER(message.content, self.listen[message.id]))
+            elif emoji == "❌":
+                await message.delete()
+            elif emoji == "⏹️":
+                await message.edit(R.INFO.SCENE_BREAK)
+            elif emoji == "⏸":
+                await message.edit(R.INFO.SCENE_PAUSED)
+            elif emoji == "▶️":
+                newMessage = await message.channel.send(R.INFO.SCENE_RESUMED)
+                self.listen[newMessage.id] = self.listen[message.id]
+                self.listenTo(newMessage, self.listen[message.id])
 
             else:
                 return
-            await reaction.remove(user)
+            await message.remove_reaction(emoji, user)
     
     @commands.command(**R.SCENE.meta)
     async def scene(self, ctx: Ctx, *, op: str):

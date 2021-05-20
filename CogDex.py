@@ -1,11 +1,14 @@
 
-from sources.pkmn import MISSINGNO
-from typing import Any, Callable, Coroutine, Generic, Optional, Type, TypeVar, Union
+import re
+from typing import (Any, Callable, Coroutine, Generic, Optional, Type, TypeVar,
+                    Union)
+
 from discord.ext import commands
 
-from Dexes import Ability, Dex, DexItem, LearnedMove, Move, POKEDEX, MOVEDEX, ABILITYDEX, Pokemon
+from Dexes import (ABILITYDEX, MOVEDEX, POKEDEX, Ability, Dex, DexItem,
+                   LearnedMove, Move, Pokemon)
+from sources.pkmn import MISSINGNO
 from sources.text import DEX as D
-import re
 from utils import Fail, getMuOSEmbed, paginate, shuffleWord
 
 Ctx = commands.Context

@@ -1,4 +1,4 @@
-
+ 
 import asyncio
 import datetime as dt
 import discord
@@ -14,12 +14,12 @@ from Help import Help
 #from solos import printNLP
 from sources.general import BOT_PREFIX, MENTION_ME
 from sources.ids import TEST
-from utils import Fail, getRandomAvatarImageAndTime, handlePaginationReaction
+from utils import Fail, getRandomAvatarImageAndTime, onReaction
 
 intents: discord.Intents = discord.Intents.default()
 intents.members = True
 
-def determinePrefix(bot: commands.Bot, message: discord.Message):
+def determinePrefix(_: commands.Bot, message: discord.Message):
     if isinstance(message.channel, discord.DMChannel):
         if message.content.startswith(BOT_PREFIX):
             return BOT_PREFIX
@@ -40,7 +40,8 @@ client = commands.Bot(
 cogDex = CogDex(client)
 client.add_cog(cogDex)
 cogRoleplay = CogRoleplay(client)
-cogMod = CogMod()
+client.add_cog(cogRoleplay)
+cogMod = CogMod(client)
 client.add_cog(cogMod)
 
 @tasks.loop(hours=24 * 2)
@@ -75,15 +76,13 @@ async def on_message(message: discord.Message):
 
 @client.event
 async def on_message_delete(message: discord.Message):
-    if message.author.bot: return
-    await cogMod.handleMessageDelete(message)
+    await cogMod.onMessageDelete(message)
 
 @client.event
 async def on_reaction_add(reaction: discord.Reaction, user: Union[discord.User, discord.Member]):
     #print("on_reaction_add")
-    if user.bot: return
-    await handlePaginationReaction(reaction.message, reaction.emoji, user)
-    await cogRoleplay.onReaction(reaction, user)
+    await onReaction(reaction.message, reaction.emoji, user)
+    await cogRoleplay.onReaction(reaction.message, reaction.emoji, user)
 
 @client.event
 async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
@@ -95,7 +94,6 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
         message = await channel.fetch_message(payload.message_id)
         await handlePaginationReaction(message, payload.emoji, user)
     """
-
 
 @client.event
 async def on_command_error(ctx: commands.Context, error: commands.CommandError):

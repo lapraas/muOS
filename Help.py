@@ -6,20 +6,21 @@ from discord.ext import commands
 
 import sources.text as T
 
-def getNonhiddenCommands(commands: list[commands.Command], getter: Callable[[commands.Command], Union[commands.Command, str]]=lambda x: x) -> list[Union[commands.Command, str]]:
-    return [getter(command) for command in commands if not command.hidden]
+def getNonhiddenCommands(ctx: commands.Context, commands: list[commands.Command], getter: Callable[[commands.Command], Union[commands.Command, str]]=lambda x: x) -> list[Union[commands.Command, str]]:
+    print([command.name for command in commands])
+    return [getter(command) for command in commands if all(check(ctx) for check in command.checks)]
 
 class Help(commands.DefaultHelpCommand):
     async def send_bot_help(self, mapping: Mapping[Optional[commands.Cog], list[commands.Command]]):
         pages = []
-        cogNames = [cog.qualified_name for cog in mapping if isinstance(cog, commands.Cog) and getNonhiddenCommands(mapping[cog])]
+        cogNames = [cog.qualified_name for cog in mapping if isinstance(cog, commands.Cog) and getNonhiddenCommands(self.context, mapping[cog])]
         for i, cog in enumerate(mapping):
             if not cog: continue
             cmds = mapping[cog]
             if not cmds: continue
             pages.append({
                 "content": T.HELP.cogPaginationContent(cogNames, i),
-                "embed": getMuOSEmbed(**T.HELP.cogEmbed(cog.qualified_name, cog.description, getNonhiddenCommands(cmds, lambda cmd: cmd.qualified_name)))
+                "embed": getMuOSEmbed(**T.HELP.cogEmbed(cog.qualified_name, cog.description, getNonhiddenCommands(self.context, cmds, lambda cmd: cmd.qualified_name)))
             })
         await paginateDEPR(self.context, pages, True)
     
@@ -34,10 +35,10 @@ class Help(commands.DefaultHelpCommand):
         await paginateDEPR(self.context, pages, True)
     
     async def send_cog_help(self, cog: commands.Cog):
-        await self.sendPaginatedHelp(cog.qualified_name, getNonhiddenCommands(cog.get_commands()))
+        await self.sendPaginatedHelp(cog.qualified_name, getNonhiddenCommands(self.context, cog.get_commands()))
     
     async def send_group_help(self, group: commands.Group):
-        await self.sendPaginatedHelp(group.qualified_name, getNonhiddenCommands(group.commands), group.aliases)
+        await self.sendPaginatedHelp(group.qualified_name, getNonhiddenCommands(self.context, group.commands), group.aliases)
     
     async def send_command_help(self, command: commands.Command):
         embed = getMuOSEmbed(
