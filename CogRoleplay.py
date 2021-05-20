@@ -1,4 +1,5 @@
 
+from CogMod import dmCheck
 from utils import Fail
 from sources.ids import IDS, IDs
 import discord
@@ -42,7 +43,7 @@ class CogRoleplay(commands.Cog):
             ): replace = R.INFO.SCENE_RESUMED
             if replace:
                 await message.delete()
-                newMessage: discord.Message = await message.channel.send(replace).id
+                newMessage: discord.Message = await message.channel.send(replace)
                 self.listenTo(newMessage)
             else:
                 self.timers[message.channel.id] = dt.datetime.now()
@@ -67,13 +68,19 @@ class CogRoleplay(commands.Cog):
             await message.remove_reaction(emoji, user)
     
     @commands.command(**R.SCENE.meta)
-    async def scene(self, ctx: Ctx, *, op: str):
+    async def scene(self, ctx: Ctx, *, op: str=None):
+        await ctx.message.delete()
         if not IDS.check(IDs.rpChannels, ctx.channel.id):
             raise Fail(R.ERR.NOT_IN_RP_CHANNEL)
         if any(x in op for x in ["pause", "hold"]):
-            message = ctx.send(R.INFO.SCENE_PAUSED)
+            message = await ctx.send(R.INFO.SCENE_PAUSED)
         elif any(x in op for x in ["resume", "unpause"]):
-            message = ctx.send(R.INFO.SCENE_RESUMED)
+            message = await ctx.send(R.INFO.SCENE_RESUMED)
         else:
-            message = ctx.send(R.INFO.SCENE_BREAK)
+            message = await ctx.send(R.INFO.SCENE_BREAK)
         self.listen[message.id] = ctx.author.id
+    
+    @commands.command()
+    @commands.check(dmCheck)
+    async def addTupper(self, ctx: Ctx, *, nameAndURL: str):
+        pass

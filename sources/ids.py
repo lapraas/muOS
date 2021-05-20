@@ -53,9 +53,13 @@ class IDLists:
         if not target in [s for s in self.__class__.__dict__.values() if isinstance(s, str)]:
             raise self.__class__._error(target)
 
-    def _write(self, idsFile: str="./source/ids.json"):
+    def _write(self, idsFile: str="./sources/ids.json"):
+        j = {}
+        for jName in self.j:
+            jVal = self.j[jName]
+            j[jName] = list(jVal)
         with open(idsFile, "w") as f:
-            json.dump(self.j, f)
+            json.dump(j, f)
     
     def getAll(self, target):
         self._check(target)
@@ -67,7 +71,7 @@ class IDLists:
     
     def add(self, target: str, value: int):
         self._check(target)
-        if not self.check(target, value):
+        if self.check(target, value):
             return False
         self.j[target].add(value)
         self._write()
