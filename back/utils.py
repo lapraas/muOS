@@ -220,23 +220,25 @@ async def paginateDEPR(ctx: commands.Context, contents: _RawPagesDEPR, ignoreInd
     paginator = Paginator(pages, ctx.author.id, ignoreIndex)
     await sendPaginator(ctx, paginator)
 
-RawPage = Union[str, dict[str, str], tuple[str, dict[str, str]]]
+RawEmbed = dict[str, Union[str, tuple[str, str], tuple[str, str, bool]]]
+RawPage = Union[str, RawEmbed, tuple[str, RawEmbed]]
+RawPages = list[RawPage]
 def buildRawPage(page: RawPage):
     if isinstance(page, str):
         return Page(content=page)
     if isinstance(page, dict):
         return Page(embed=getMuOSEmbed(**page))
-    if isinstance(page, tuple):
+    if isinstance(page, (list, tuple)):
         return Page(content=page[0], embed=getMuOSEmbed(**page[1]))
 
-async def paginate(ctx: commands.Context, contents: list[RawPage], ignoreIndex: bool=False):
+async def paginate(ctx: commands.Context, contents: RawPages, *, ignoreIndex: bool=False):
     pages = []
     for page in contents:
         pages.append(buildRawPage(page))
     paginator = Paginator(pages, ctx.author.id, ignoreIndex)
     await sendPaginator(ctx, paginator)
 
-DictPages = dict[str, list[RawPage]]
+DictPages = dict[str, RawPages]
 async def paginateDict(ctx: commands.Context, contents: DictPages, startFocused = str):
     pages: dict[str, list[Page]] = {}
     for emoji in contents:

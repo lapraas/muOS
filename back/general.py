@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import math
-from typing import Callable, Optional, TypeVar, Union
+from typing import Callable, TypeVar, Union
 
 import back.ids as IDS
 
@@ -21,26 +21,23 @@ GRAPHICS = [MUOS_GRAPHIC_URL, MUOS_GRAPHIC_URL_2, MUOS_GRAPHIC_URL_3, MUOS_GRAPH
 
 stripLines = lambda text: "\n".join([line.strip() for line in text.split("\n")])
 class Cmd:
-    def __init__(self, *args, usage: list[str]=None, parent: Optional[Cmd]=None, **kwargs):
-        self.name: str = args[0]
-        self.aliases: list[str] = args[1:-1]
-        self.desc: Union[list[str], str] = args[-1]
-        self.parent = parent
-        self.qualifiedName = self.name
-        if self.parent:
-            self.qualifiedName = f"{parent.qualifiedName} {self.qualifiedName}"
+    def __init_subclass__(cls, *, meta: list[str], usage: list[str]=None, parent: Cmd=None) -> None:
+        cls.name: str = meta[0]
+        cls.aliases: list[str] = meta[1:-1]
+        cls.desc: Union[list[str], str] = meta[-1]
+        cls.parent = parent
+        cls.qualifiedName = cls.name
+        if cls.parent:
+            cls.qualifiedName = f"{parent.qualifiedName} {cls.qualifiedName}"
         
         if usage:
-            self.desc += "\n**Usage:**```\n" + "\n".join([f"{BOT_PREFIX}{self.qualifiedName} {case}" for case in usage]) + "```"
+            cls.desc += "\n**Usage:**```\n" + "\n".join([f"{BOT_PREFIX}{cls.qualifiedName} {case}" for case in usage]) + "```"
         
-        for key, val in kwargs.items():
-            setattr(self, key, val)
+        cls.desc = stripLines(cls.desc)
         
-        self.desc = stripLines(self.desc)
-        
-        self.meta = {"name": self.name, "aliases": self.aliases, "help": self.desc}
-        self.ref = f"{BOT_PREFIX}{self.name}"
-        self.refF = f"`{self.ref}`"
+        cls.meta = {"name": cls.name, "aliases": cls.aliases, "help": cls.desc}
+        cls.ref = f"{BOT_PREFIX}{cls.name}"
+        cls.refF = f"`{cls.ref}`"
 
 _FORMAT = "%I:%M:%S%p, %b %d (%a), %Y"
 intable = lambda t: all([d in "1234567890-" for d in t])

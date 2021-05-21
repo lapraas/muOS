@@ -6,44 +6,56 @@ class COG:
     DESCRIPTION = "This part of the bot has a few tools to make moderation easier."
 
 _modRoleBlurb =  "roles that give people access to the moderative functions of this bot"
-ADD_MOD_ROLE = Cmd(
-    "addmodrole",
-    f"""
-        This command allows lapras to add {_modRoleBlurb}.
-    """
-)
-RM_MOD_ROLE = Cmd(
-    "rmmodrole",
-    f"""
-        This command allows lapras to remove {_modRoleBlurb}.
-    """
-)
+class ADD_MOD_ROLE(Cmd,
+    meta = [
+        "addmodrole",
+        f"""
+            This command allows lapras to add {_modRoleBlurb}.
+        """
+    ]
+): pass
+class RM_MOD_ROLE(Cmd,
+    meta = [
+        "rmmodrole",
+        f"""
+            This command allows lapras to remove {_modRoleBlurb}.
+        """
+    ]
+): pass
 _dmRoleBlurb =  "roles that give people access to the DM functions in this bot"
-ADD_DM_ROLE = Cmd(
-    "adddmrole",
-    f"""
-        This command allows moderators to add {_dmRoleBlurb}.
-    """
-)
-RM_DM_ROLE = Cmd(
-    "rmdmrole",
-    f"""
-        This command allows moderators to remove {_dmRoleBlurb}.
-    """
-)
+class ADD_DM_ROLE(Cmd,
+    meta = [
+        "adddmrole",
+        f"""
+            This command allows moderators to add {_dmRoleBlurb}.
+        """
+    ]
+): pass
+class RM_DM_ROLE(Cmd,
+    meta = [
+        "rmdmrole",
+        f"""
+            This command allows moderators to remove {_dmRoleBlurb}.
+        """
+    ]
+): pass
 _rpChannelBlurb = "channels to the list of the bot's recognized RP channels"
-ADD_RP_CHANNEL = Cmd(
-    "addrpchannel",
-    f"""
-        This command allows moderators to add {_rpChannelBlurb}.
-    """
-)
-RM_RP_CHANNEL = Cmd(
-    "rmrpchannel",
-    f"""
-        This command allows moderators to add {_rpChannelBlurb}
-    """
-)
+class ADD_RP_CHANNEL(Cmd,
+    meta = [
+        "addrpchannel",
+        f"""
+            This command allows moderators to add {_rpChannelBlurb}.
+        """
+    ]
+): pass
+class RM_RP_CHANNEL(Cmd,
+    meta = [
+        "rmrpchannel",
+        f"""
+            This command allows moderators to add {_rpChannelBlurb}
+        """
+    ]
+): pass
 
 _addChannel = lambda thing: lambda channel, success: (
     f"Successfuly added <#{channel}> as {thing}." if success else

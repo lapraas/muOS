@@ -7,11 +7,13 @@ class COG:
     NAME = "Dex Cog"
     DESC = "A cog that provides lookup for various Pokemon resources. It includes a Pokedex, a Movedex, and an Abilitydex."
 
-QUERY = Cmd(
-    "query", "dex",
-    f"""
-        This is an all-purpose command that will give the user a list of Pokemon that match the entry.
-    """,
+class QUERY(Cmd,
+    meta=[
+        "query", "dex",
+        f"""
+            This is an all-purpose command that will give the user a list of Pokemon that match the entry.
+        """
+    ],
     usage=[
         "porygon-z",
         "pokemon with moves trick room and tri attack",
@@ -19,17 +21,19 @@ QUERY = Cmd(
         "pokemon with types water, electric"
         "baby pokemon with ability natural cure",
     ]
-)
-CHECK = Cmd(
-    "check",
-    f"""
-        This command will check whether or not a Pokemon has a list of moves.
-        Specify the Pokemon's name first, then the word "for", then a comma-separated list of moves to check.
-    """,
+): pass
+class CHECK(Cmd,
+    meta=[
+        "check",
+        f"""
+            This command will check whether or not a Pokemon has a list of moves.
+            Specify the Pokemon's name first, then the word "for", then a comma-separated list of moves to check.
+        """
+    ],
     usage=[
         "gardevoir for teleport, telekinesis, wish, life dew, future sight, protect, magical leaf, will-o-wisp, swift, shadow ball"
     ]
-)
+): pass
 
 _forQuery = lambda query: f"For query `{query}`:\n"
 _forExtra = lambda extra: f"For the specification `{extra}`, "
