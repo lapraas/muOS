@@ -11,6 +11,7 @@ Ctx = commands.Context
 
 reLink = re.compile(r"(?!<)(https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/\/=]*))(?!>)")
 path = "./sources/tupper.json"
+_defaultImage = "https://cdn.discordapp.com/attachments/797494897229430854/845347013583437845/transparent.png"
 
 _RawLink = Optional[str]
 _RawEmote = tuple[str, str, _RawLink]
@@ -18,6 +19,13 @@ _RawEmotes = list[_RawEmote]
 _RawTupper = tuple[_RawEmotes, bool]
 _RawTupperList = dict[str, _RawTupper]
 _RawTupperLists = dict[int, _RawTupperList]
+
+class Codes(Enum):
+    """ List of codes for TupperLists. """
+    EXISTS = 10
+    EXISTS_PUBLIC = 11
+    NO_TUPPERS = 20
+    NOT_FOUND = 30
 
 class Emote:
     DEFAULT = "default"
@@ -30,7 +38,7 @@ class Emote:
     def getName(self): return self.name
     def getPrefix(self): return self.prefix
     def getSuffix(self): return self.suffix
-    def getURL(self): return self.url
+    def getURL(self): return self.url if self.url else _defaultImage
     
     def json(self):
         return (self.name, self.key, self.url)
@@ -58,17 +66,32 @@ class Tupper:
         emotes = [emote.json() for emote in self.emotes]
         return (emotes, self.public)
     
+    def getEmote(self, name: str):
+        for emote in self.emotes:
+            if emote.getName() == name:
+                return emote
+        return Codes.NOT_FOUND
+    
+    def addEmote(self, name: str, key: str, url: Optional[str]):
+        if self.getEmote(name) != Codes.NOT_FOUND: return Codes.EXISTS
+        newEmote = Emote(name, key, url)
+        self.emotes.append(newEmote)
+        return newEmote
+    
+    def removeEmote(self, name: str):
+        found = False
+        for emote in self.emotes:
+            if emote.getName() == name:
+                found = True
+                break
+        if not found: return Codes.NOT_FOUND
+        self.emotes.remove(emote)
+        return emote
+    
     def match(self, text: str):
         for emote in self.emotes:
             if emote.match(text):
                 return emote
-
-class Codes(Enum):
-    """ List of codes for TupperLists. """
-    EXISTS = 10
-    EXISTS_PUBLIC = 11
-    NO_TUPPERS = 20
-    NOT_FOUND = 30
 
 
 class TupperLists:
@@ -154,11 +177,12 @@ class TupperLists:
         for tupperName in tupperList:
             tupper = tupperList[tupperName]
             emote = tupper.match(text)
-            if emote: return emote
+            if emote: return tupper, emote
         allPublic = self.getAllPublic()
         for tupperName in allPublic:
-            emote = allPublic[tupperName].match(text)
-            if emote: return emote
+            tupper = allPublic[tupperName]
+            emote = tupper.match(text)
+            if emote: return tupper, emote
         return Codes.NOT_FOUND
 
 with open(path, "r") as f:

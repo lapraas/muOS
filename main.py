@@ -9,7 +9,7 @@ import discord
 from discord.ext import commands, tasks
 
 from back.general import BOT_PREFIX, MENTION_ME
-from back.ids import TEST
+from back.ids import MY_USER_ID, TEST
 from back.utils import Fail, getRandomAvatarImageAndTime, onReaction
 from front.CogDex import CogDex
 from front.CogMod import CogMod
@@ -53,6 +53,7 @@ async def changeAvatar():
 @client.event
 async def on_ready():
     print(f"Logged in as {client.user}.")
+    await cogRoleplay.onReady()
     now = dt.datetime.now()
     then = now.replace(day=now.day + now.day % 2, hour=0, minute=0, second=0, microsecond=0)
     if now > then:
@@ -113,8 +114,14 @@ async def on_command_error(ctx: commands.Context, error: commands.CommandError):
     else:
         toSend += f"An unexpected error occurred. Please let {MENTION_ME} know."
         toRaise = error
+    
+    _formattedException = f"\n```\n{''.join(traceback.format_exception(type(error), error, error.__traceback__))}```"
     if toRaise and ctx.guild.id == TEST.ID:
-        toSend += f"\n```\n{''.join(traceback.format_exception(type(error), error, error.__traceback__))}```"
+        toSend += _formattedException
+    elif toRaise:
+        me = await client.fetch_user(MY_USER_ID)
+        me.send(_formattedException)
+    
     if ctx.command:
         toSend += f"\nIf you need help with this command, please use `{BOT_PREFIX}help {ctx.command.qualified_name}`."
     await ctx.send(toSend)
