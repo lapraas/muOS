@@ -1,6 +1,7 @@
 
 #from __future__ import annotations
 # ^ has to be commented out because of some bullshit in the core file
+from back.utils import determinePrefix
 from typing import Callable, Coroutine, Optional, Type, TypeVar
 
 import discord
@@ -22,6 +23,7 @@ class CogMod(commands.Cog, name=M.COG.NAME, description=M.COG.DESCRIPTION):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.oldDeleteEntries: dict[int, MiniEntry] = {}
+        self.deleteIgnores: list[int] = []
 
         self.setup()
     
@@ -48,7 +50,8 @@ class CogMod(commands.Cog, name=M.COG.NAME, description=M.COG.DESCRIPTION):
         if (
             isinstance(message.channel, discord.DMChannel) or
             not message.guild.id in LOG_CHANNEL_IDS or
-            message.author.bot
+            message.author.bot or
+            message.content.startswith(determinePrefix(None, message))
         ):
             return
         

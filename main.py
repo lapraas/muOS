@@ -10,7 +10,7 @@ from discord.ext import commands, tasks
 
 from back.general import BOT_PREFIX, MENTION_ME
 from back.ids import MY_USER_ID, TEST
-from back.utils import Fail, getRandomAvatarImageAndTime, onReaction
+from back.utils import Fail, determinePrefix, getRandomAvatarImageAndTime, onReaction
 from front.CogDex import CogDex
 from front.CogMod import CogMod
 from front.CogRoleplay import CogRoleplay
@@ -18,18 +18,6 @@ from front.Help import Help
 
 intents: discord.Intents = discord.Intents.default()
 intents.members = True
-
-def determinePrefix(_: commands.Bot, message: discord.Message):
-    if isinstance(message.channel, discord.DMChannel):
-        if message.content.startswith(BOT_PREFIX):
-            return BOT_PREFIX
-        if message.content.startswith(BOT_PREFIX.title()):
-            return BOT_PREFIX.title()
-        return ""
-    else:
-        if message.content.startswith(BOT_PREFIX.title()):
-            return BOT_PREFIX.title()
-        return BOT_PREFIX
 
 client = commands.Bot(
     command_prefix=determinePrefix,

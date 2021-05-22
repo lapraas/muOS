@@ -8,13 +8,25 @@ import discord
 import sources.text.utils as U
 from discord.ext import commands
 
-from back.general import EMPTY, GRAPHICS, stripLines
+from back.general import BOT_PREFIX, EMPTY, GRAPHICS, stripLines
 
 
 class Fail(Exception):
     def __init__(self, message: str):
         super().__init__(message)
         self.message = message
+
+def determinePrefix(_: commands.Bot, message: discord.Message):
+    if isinstance(message.channel, discord.DMChannel):
+        if message.content.startswith(BOT_PREFIX):
+            return BOT_PREFIX
+        if message.content.startswith(BOT_PREFIX.title()):
+            return BOT_PREFIX.title()
+        return ""
+    else:
+        if message.content.startswith(BOT_PREFIX.title()):
+            return BOT_PREFIX.title()
+        return BOT_PREFIX
 
 def getRandomAvatarImageAndTime():
     with open(U.PATHS.AVATAR_ROTATION, "r") as f:
