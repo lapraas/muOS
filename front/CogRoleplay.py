@@ -30,9 +30,11 @@ class CogRoleplay(commands.Cog):
             for webhook in await channel.webhooks():
                 if webhook.name == _webhookName:
                     self.webhooks[channelID] = webhook
+                    print(f"Found existing webhook for RP channel `{channel.name}`.")
                     break
             if not self.webhooks.get(channelID):
                 self.webhooks[channelID] = await channel.create_webhook(name=_webhookName)
+                print(f"Created new webhook for RP channel `{channel.name}`.")
     
     def _listenTo(self, message: discord.WebhookMessage):
         self.listen.add(message.id)
@@ -84,6 +86,21 @@ class CogRoleplay(commands.Cog):
                 return
             #await message.remove_reaction(emoji, user)
     
+    @commands.command(**R.SCENE.meta)
+    async def scene(self, ctx: Ctx, *, op: str):
+        if not IDS.check(IDs.rpChannels, ctx.channel.id):
+            raise Fail(R.ERR.NOT_IN_RP_CHANNEL)
+        if any(x in op for x in ["resume", "unpause"]):
+            message = await self.sendSceneNotif(ctx.channel, R.SCENE.RESUMED)
+        elif any(x in op for x in ["pause"]):
+            message = await self.sendSceneNotif(ctx.channel, R.SCENE.PAUSED)
+        elif any(x in op for x in ["break"]):
+            message = await self.sendSceneNotif(ctx.channel, R.SCENE.BREAK)
+        else:
+            raise Fail(R.SCENE.FAIL(op))
+        self._listenTo(message)
+        await ctx.message.delete()
+    
     @classmethod
     def _getTupper(cls, ctx: Ctx, name: str, *, ignoreDMCheck: bool=False):
         """ Gets the tupper made by the context's author with the given name.
@@ -98,21 +115,6 @@ class CogRoleplay(commands.Cog):
         if res == Codes.NOT_FOUND: raise Fail(R.ERR.NOT_FOUND(name))
         return res
     
-    @commands.command(**R.SCENE.meta)
-    async def scene(self, ctx: Ctx, *, op: str):
-        await ctx.message.delete()
-        if not IDS.check(IDs.rpChannels, ctx.channel.id):
-            raise Fail(R.ERR.NOT_IN_RP_CHANNEL)
-        if any(x in op for x in ["resume", "unpause"]):
-            message = await self.sendSceneNotif(ctx.channel, R.SCENE.RESUMED)
-        elif any(x in op for x in ["pause"]):
-            message = await self.sendSceneNotif(ctx.channel, R.SCENE.PAUSED)
-        elif any(x in op for x in ["break"]):
-            message = await self.sendSceneNotif(ctx.channel, R.SCENE.BREAK)
-        else:
-            raise Fail(R.SCENE.FAIL(op))
-        self._listenTo(message)
-    
     def _parseTupperArgs(self, args: list[str]):
         newURL = None
         if not len(args) >= 2: raise Fail(R.ADD_TUPPER.TOO_FEW_ARGS(len(args)))
@@ -124,7 +126,7 @@ class CogRoleplay(commands.Cog):
         if not "text" in newPrefix: raise Fail(R.ADD_TUPPER.BAD_PREFIX(newPrefix))
 
         return newName, newPrefix, newURL
-    
+"""
     @commands.command(**R.ADD_TUPPER.meta)
     async def addTupper(self, ctx: Ctx, *, args: str):
         split = [arg.strip() for arg in args.split(";")]
@@ -178,3 +180,4 @@ class CogRoleplay(commands.Cog):
     async def addTupperImage(self, ctx: Ctx, *, args: str):
         split = [arg.strip() for arg in args.split(";")]
         tupperName, emoteName, emoteURL = self._parseTupperArgs(split)
+"""

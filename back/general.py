@@ -17,7 +17,7 @@ MUOS_GRAPHIC_URL_2 = "https://cdn.discordapp.com/attachments/284520081700945921/
 MUOS_GRAPHIC_URL_3 = "https://cdn.discordapp.com/attachments/284520081700945921/835412799756173382/mu.png"
 MUOS_GRAPHIC_URL_4 = "https://cdn.discordapp.com/attachments/284520081700945921/835413757353394206/mu_alt3.png"
 
-GRAPHICS = [MUOS_GRAPHIC_URL, MUOS_GRAPHIC_URL_2, MUOS_GRAPHIC_URL_3, MUOS_GRAPHIC_URL_4]
+GRAPHICS = [MUOS_GRAPHIC_URL]
 
 stripLines = lambda text: "\n".join([line.strip() for line in text.split("\n")])
 class Cmd:

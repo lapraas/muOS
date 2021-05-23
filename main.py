@@ -108,7 +108,7 @@ async def on_command_error(ctx: commands.Context, error: commands.CommandError):
         toSend += _formattedException
     elif toRaise:
         me = await client.fetch_user(MY_USER_ID)
-        me.send(_formattedException)
+        await me.send(_formattedException)
     
     if ctx.command:
         toSend += f"\nIf you need help with this command, please use `{BOT_PREFIX}help {ctx.command.qualified_name}`."
