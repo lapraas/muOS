@@ -23,9 +23,12 @@ class CogMod(commands.Cog, name=M.COG.NAME, description=M.COG.DESCRIPTION):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.oldDeleteEntries: dict[int, MiniEntry] = {}
-        self.deleteIgnores: list[int] = []
+        self.deleteIgnores: set[int] = {}
 
         self.setup()
+    
+    def addDeleteIgnore(self, mid: int):
+        self.deleteIgnores.add(mid)
     
     @staticmethod
     async def getNewEntries(guild: discord.Guild) -> dict[int, MiniEntry]:
@@ -47,6 +50,9 @@ class CogMod(commands.Cog, name=M.COG.NAME, description=M.COG.DESCRIPTION):
         self.oldDeleteEntries = await CogMod.getNewEntries(guild)
     
     async def onMessageDelete(self, message: discord.Message):
+        if message.id in self.deleteIgnores:
+            self.deleteIgnores.discard(message.id)
+            return
         if (
             isinstance(message.channel, discord.DMChannel) or
             not message.guild.id in LOG_CHANNEL_IDS or

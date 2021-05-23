@@ -1,53 +1,91 @@
 
+from back.general import EMPTY
 import datetime as dt
-from typing import Optional, Union
+from front.CogMod import CogMod
+from typing import Literal, Optional, Union
 
 import discord
 import sources.text.cogrp as R
 from back.ids import IDS, IDs
-from back.tupper import Codes, Emote, TUPPER_LISTS, reLink
-from back.utils import Fail, paginate
-from discord.ext import commands
+from back.tupper import Codes, TUPPER_LISTS, reLink, defaultImage
+from back.utils import Fail, getEmbed, paginate
+from discord.ext import commands, tasks
 
 Ctx = commands.Context
 _webhookName = "muOS Tupperhook"
+_webhookShortName = "muOS"
 
 class CogRoleplay(commands.Cog):
-    def __init__(self, bot: commands.Bot):
+    def __init__(self, bot: commands.Bot, cogMod: CogMod):
         self.bot = bot
+        self.cogMod = cogMod
 
-        self.listen: dict[int, Optional[int]] = {}
+        self.listen: dict[int, discord.WebhookMessage] = {}
         self.timers: dict[int, dt.datetime] = {}
+        self.lastBreaks: dict[int, int] = {}
+        self.lastPauses: dict[int, int] = {}
         self.webhooks: dict[int, discord.Webhook] = {}
+
+        self.tick.start()
     
     async def onReady(self):
         for channelID in IDS.getAll(IDs.rpChannels):
             channel: discord.TextChannel = await self.bot.fetch_channel(channelID)
             webhook: Optional[discord.Webhook] = None
             for webhook in await channel.webhooks():
-                print(webhook.name)
                 if webhook.name == _webhookName:
                     self.webhooks[channelID] = webhook
                     break
             if not self.webhooks.get(channelID):
                 self.webhooks[channelID] = await channel.create_webhook(name=_webhookName)
     
-    def _listenTo(self, message: discord.Message, uid: Optional[int]=None):
-        self.listen[message.id] = uid
+    def _listenTo(self, message: discord.WebhookMessage):
+        self.listen[message.id] = message
     
+    @tasks.loop(minutes=1)
     async def tick(self):
         now = dt.datetime.now()
         for channelID in self.timers:
             lastMsgTime = self.timers[channelID]
             if now - lastMsgTime > dt.timedelta(hours=1):
                 channel = await self.bot.fetch_channel(channelID)
-                newMessage: discord.Message = await channel.send(R.SCENE.PAUSED)
+                newMessage = self.sendSceneNotif(channel, R.SCENE.PAUSED)
                 self._listenTo(newMessage)
+    
+    async def replaceWithLink(self, channel: discord.TextChannel, lastMessages: dict[int, int], notif: str):
+        lastMessageID = lastMessages.get(channel.id)
+        if lastMessageID:
+            lastMessage: discord.Message = await channel.fetch_message(lastMessageID)
+            notif = R.SCENE.ADD_LINK(notif, lastMessage.jump_url)
+        return notif
+    
+    async def getSceneEmbed(self, channel: discord.TextChannel, notif: str):
+        if notif == R.SCENE.BREAK:
+            notif = await self.replaceWithLink(channel, self.lastBreaks, notif)
+            toUpdate = self.lastBreaks
+        elif notif == R.SCENE.PAUSED:
+            notif = await self.replaceWithLink(channel, self.lastBreaks, notif)
+            toUpdate = self.lastPauses
+        elif notif == R.SCENE.RESUMED:
+            notif = await self.replaceWithLink(channel, self.lastPauses, notif)
+            toUpdate = self.lastBreaks
+        else:
+            raise Exception(f"Called getSceneEmbed without a valid scene notification ({notif})")
+        return notif, toUpdate
+    
+    async def sendSceneNotif(self, channel: discord.TextChannel, notif: str):
+        notif, toUpdate = await self.getSceneEmbed(channel, notif)
+        webhook = self.webhooks[channel.id]
+        newMessage: discord.WebhookMessage = await webhook.send(notif, username=_webhookShortName, avatar_url=defaultImage, wait=True)
+        toUpdate[channel.id] = newMessage.id
+        return newMessage
     
     async def onMessage(self, message: discord.Message):
         if message.author.bot:
+            if message.author.display_name == _webhookShortName: return
             replace = None
             content: str = message.content
+            if not IDS.check(IDs.rpChannels, message.channel.id): return
 
             if any(x in content for x in
                 ["<><>"]
@@ -63,7 +101,8 @@ class CogRoleplay(commands.Cog):
 
             if replace:
                 await message.delete()
-                newMessage: discord.Message = await message.channel.send(replace)
+                
+                newMessage = await self.sendSceneNotif(message.channel, replace)
                 self._listenTo(newMessage)
             else:
                 self.timers[message.channel.id] = dt.datetime.now()
@@ -72,6 +111,7 @@ class CogRoleplay(commands.Cog):
             if not isinstance(res, tuple): return
             tupper, emote = res
 
+            self.cogMod.addDeleteIgnore(message.id)
             await message.delete()
             content: str = message.content
             content = content.removeprefix(emote.getPrefix()).removesuffix(emote.getSuffix())
@@ -80,19 +120,20 @@ class CogRoleplay(commands.Cog):
     
     async def onReaction(self, message: discord.Message, emoji: str, user: Union[discord.User, discord.Member]):
         if message.id in self.listen and not user.bot:
-            if self.listen[message.id] and user.id != self.listen[message.id]:
-                await user.send(R.INFO.OTHER_USER(message.content, self.listen[message.id]))
-            elif emoji == "❌":
-                await message.delete()
+            webhookMessage = self.listen[message.id]
+            if emoji == "❌":
+                # deleting a message breaks the last-sent scene notification saving
+                await webhookMessage.delete()
+                return
             elif emoji == "⏹️":
-                await message.edit(R.SCENE.BREAK)
-            elif emoji == "⏸":
-                await message.edit(R.SCENE.PAUSED)
+                res, _ = await self.getSceneEmbed(message.channel, R.SCENE.BREAK)
+                await webhookMessage.edit(content=res)
+            elif emoji == "⏸️":
+                res, _ = await self.getSceneEmbed(message.channel, R.SCENE.PAUSED)
+                await webhookMessage.edit(content=res)
             elif emoji == "▶️":
-                newMessage = await message.channel.send(R.SCENE.RESUMED)
-                self.listen[newMessage.id] = self.listen[message.id]
-                self._listenTo(newMessage, self.listen[message.id])
-
+                newMessage = await self.sendSceneNotif(message.channel, R.SCENE.RESUMED)
+                self._listenTo(newMessage)
             else:
                 return
             await message.remove_reaction(emoji, user)
@@ -112,17 +153,19 @@ class CogRoleplay(commands.Cog):
         return res
     
     @commands.command(**R.SCENE.meta)
-    async def scene(self, ctx: Ctx, *, op: str=None):
+    async def scene(self, ctx: Ctx, *, op: str):
         await ctx.message.delete()
         if not IDS.check(IDs.rpChannels, ctx.channel.id):
             raise Fail(R.ERR.NOT_IN_RP_CHANNEL)
-        if any(x in op for x in ["pause", "hold"]):
-            message = await ctx.send(R.SCENE.PAUSED)
-        elif any(x in op for x in ["resume", "unpause"]):
-            message = await ctx.send(R.SCENE.RESUMED)
+        if any(x in op for x in ["resume", "unpause"]):
+            message = await self.sendSceneNotif(ctx.channel, R.SCENE.RESUMED)
+        elif any(x in op for x in ["pause"]):
+            message = await self.sendSceneNotif(ctx.channel, R.SCENE.PAUSED)
+        elif any(x in op for x in ["break"]):
+            message = await self.sendSceneNotif(ctx.channel, R.SCENE.BREAK)
         else:
-            message = await ctx.send(R.SCENE.BREAK)
-        self.listen[message.id] = ctx.author.id
+            raise Fail(R.SCENE.FAIL(op))
+        self._listenTo(message)
     
     def _parseTupperArgs(self, args: list[str]):
         newURL = None

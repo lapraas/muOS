@@ -11,6 +11,10 @@ class COG:
     NAME = "Roleplay Cog"
     DESC = "A cog that offers various different utility functions to help with roleplaying."
 
+_scene = lambda description, color=None: {
+    "description": description,
+    "color": color if color else 0x000000
+}
 class SCENE(Cmd,
     meta=[
         "scene",
@@ -25,15 +29,17 @@ class SCENE(Cmd,
         """
     ],
     usage=[
+        "break",
         "pause",
-        "hold",
         "unpause",
         "resume"
     ]
 ):
-    BREAK = "<><><><><>"
+    FAIL: Callable[[str], str] = lambda op: f"`{op}` isn't valid for this command."
+    BREAK = "<><><><><><><><>"
     PAUSED = "(Scene paused)"
     RESUMED = "(Scene unpaused)"
+    ADD_LINK: Callable[[str, str], str] = lambda message, link: f"[{message}]({link})"
 
 class ADD_TUPPER(Cmd,
     meta=[

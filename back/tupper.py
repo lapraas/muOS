@@ -11,7 +11,7 @@ Ctx = commands.Context
 
 reLink = re.compile(r"(?!<)(https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&\/\/=]*))(?!>)")
 path = "./sources/tupper.json"
-_defaultImage = "https://cdn.discordapp.com/attachments/797494897229430854/845347013583437845/transparent.png"
+defaultImage = "https://cdn.discordapp.com/attachments/797494897229430854/845347013583437845/transparent.png"
 
 _RawLink = Optional[str]
 _RawEmote = tuple[str, str, _RawLink]
@@ -38,7 +38,7 @@ class Emote:
     def getName(self): return self.name
     def getPrefix(self): return self.prefix
     def getSuffix(self): return self.suffix
-    def getURL(self): return self.url if self.url else _defaultImage
+    def getURL(self): return self.url if self.url else defaultImage
     
     def json(self):
         return (self.name, self.key, self.url)

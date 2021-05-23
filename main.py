@@ -27,10 +27,10 @@ client = commands.Bot(
 )
 cogDex = CogDex(client)
 client.add_cog(cogDex)
-cogRoleplay = CogRoleplay(client)
-client.add_cog(cogRoleplay)
 cogMod = CogMod(client)
 client.add_cog(cogMod)
+cogRoleplay = CogRoleplay(client, cogMod)
+client.add_cog(cogRoleplay)
 
 @tasks.loop(hours=24 * 2)
 async def changeAvatar():

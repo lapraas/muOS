@@ -62,7 +62,11 @@ def shuffleWord(word):
     for w in [re.sub(ePat, "\u00e9", shuffle) for shuffle in shuffles]: shuffles.add(w) # accented e (for flabebe)
     return shuffles
 
-def getEmbed(title: str, description: str=None, fields: list[Union[tuple[str, str], tuple[str, str, bool]]]=None, imageURL: str=None, footer=None, url=None, thumbnail=None):
+def getEmbed(*,
+    title: str=None, description: str=None, fields: list[Union[tuple[str, str], tuple[str, str, bool]]]=None,
+    image: str=None, footer=None, url=None, thumbnail=None, color=0xD67AE2, author=None,
+    noStrip: bool=False
+):
     """ Creates a custom embed. """
     
     if not description: description = ""
@@ -70,40 +74,32 @@ def getEmbed(title: str, description: str=None, fields: list[Union[tuple[str, st
     
     e = discord.Embed(
         title=title,
-        description=stripLines(description),
-        color=0xD67AE2,
+        description=stripLines(description)
     )
-    if url:
-        e.url = url
-    if thumbnail:
-        e.set_thumbnail(url=thumbnail)
     for field in fields:
         e.add_field(
             name=field[0],
             value=EMPTY if not len(field) >= 2 else field[1],
             inline=False if not len(field) == 3 else field[2]
         )
-    if imageURL:
-        e.set_image(url=imageURL)
-    if footer:
-        e.set_footer(text=footer)
+    if author:      e.author = author
+    if color:       e.color = color
+    if description: e.description = description if noStrip else stripLines(description)
+    if footer:      e.set_footer(text=footer)
+    if image:       e.set_image(url=image)
+    if thumbnail:   e.set_thumbnail(url=thumbnail)
+    if url:         e.url = url
     return e
 
-def getMuOSEmbed(title: str, description: str=None, fields: list[Union[tuple[str, str], tuple[str, str, bool]]]=None, imageURL: str=None, footer=None, url=None, thumbnail=None):
+def getMuOSEmbed(*, title: str, description: str=None, fields: list[Union[tuple[str, str], tuple[str, str, bool]]]=None, imageURL: str=None, footer=None, url=None, thumbnail=None, author=None):
     if not thumbnail: thumbnail = random.choice(GRAPHICS)
-    e = getEmbed(title, description, fields, imageURL, footer, url, thumbnail)
+    e = getEmbed(title=title, description=description, fields=fields, image=imageURL, footer=footer, url=url, thumbnail=thumbnail, author=author)
     return e
 
 class Page:
     def __init__(self, content: Optional[str]=None, embed: Optional[discord.Embed]=None):
         self.content = content
         self.embed = embed
-    
-    def dump(self):
-        return {
-            "content": self.content,
-            "embed": self.embed
-        }
 
 class Paginator:
     def __init__(self, pages: list[Page], issuerID: int, ignoreIndex: bool):
