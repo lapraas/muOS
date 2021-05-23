@@ -22,10 +22,7 @@ class SCENE(Cmd,
             This command provides a standardized way to break / pause / resume scenes.
 
             React to messages created by this command with
-            ❌ to delete them,
-            ⏹️ to change their text to signify a scene break,
-            ⏸ to change their text to signify a scene pause, and
-            ▶️ to send a new message signifying a scene resume.
+            ❌ to delete them.
         """
     ],
     usage=[
