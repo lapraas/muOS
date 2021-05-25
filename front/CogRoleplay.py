@@ -7,7 +7,7 @@ from typing import Literal, Optional, Union
 import discord
 import sources.text.cogrp as R
 from back.ids import IDS, IDs
-from back.tupper import Codes, TUPPER_LISTS, reLink, defaultImage
+from back.npc import defaultImage
 from back.utils import Fail, paginate
 from discord.ext import commands
 
@@ -101,83 +101,9 @@ class CogRoleplay(commands.Cog):
         self._listenTo(message)
         await ctx.message.delete()
     
-    @classmethod
-    def _getTupper(cls, ctx: Ctx, name: str, *, ignoreDMCheck: bool=False):
-        """ Gets the tupper made by the context's author with the given name.
-            If the context's author is a DM, it also matches against the public tuppers.
-            If the name wasn't found, it raises the correct error. """
-        if ignoreDMCheck or IDs.dmCheck(ctx):
-            res = TUPPER_LISTS.getPublic(name)
-            if res != Codes.NOT_FOUND:
-                return res
-        res = TUPPER_LISTS.get(ctx.author.id, name)
-        if res == Codes.NO_TUPPERS: raise Fail(R.ERR.NO_TUPPERS)
-        if res == Codes.NOT_FOUND: raise Fail(R.ERR.NOT_FOUND(name))
-        return res
-    
-    def _parseTupperArgs(self, args: list[str]):
-        newURL = None
-        if not len(args) >= 2: raise Fail(R.ADD_TUPPER.TOO_FEW_ARGS(len(args)))
-        newName, newPrefix, *args = args
-        if args: newURL, *args = args
-        if args: raise Fail(R.ADD_TUPPER.TOO_MANY_ARGS(len(args)))
-
-        if newURL and not reLink.match(newURL): raise Fail(R.ADD_TUPPER.BAD_URL(newURL))
-        if not "text" in newPrefix: raise Fail(R.ADD_TUPPER.BAD_PREFIX(newPrefix))
-
-        return newName, newPrefix, newURL
-"""
     @commands.command(**R.ADD_TUPPER.meta)
-    async def addTupper(self, ctx: Ctx, *, args: str):
-        split = [arg.strip() for arg in args.split(";")]
-        public = False
-        if split[0].lower() == "public":
-            if not IDs.dmCheck(ctx): raise Fail(R.ADD_TUPPER.BAD_PUBLIC)
-            public = True
-            split = split[1:]
-        
-        newName, newPrefix, newURL = self._parseTupperArgs(split)
-
-        res = TUPPER_LISTS.add(ctx.author.id, newName, newPrefix, public, newURL)
-        if res == Codes.EXISTS: await ctx.send(R.ADD_TUPPER.FAIL(newName))
-        elif res == Codes.EXISTS_PUBLIC: await ctx.send(R.ADD_TUPPER.FAIL_PUBLIC(newName))
-        else:
-            await paginate(ctx, R.ADD_TUPPER.SUCCESS(res), ignoreIndex=True)
-    
-    @commands.command(**R.REMOVE_TUPPER.meta)
-    async def removeTupper(self, ctx: Ctx, *, name: str):
-        tupper = self._getTupper(ctx, name)
-        TUPPER_LISTS.remove(tupper.getOwnerID(), tupper.getName())
-        await ctx.send(R.REMOVE_TUPPER.SUCCESS(name))
-    
-    @commands.command(**R.GET_TUPPER.meta)
-    async def getTupper(self, ctx: Ctx, *, name: str):
-        tupper = self._getTupper(ctx, name, ignoreDMCheck = True)
-        await ctx.send(R.GET_TUPPER.SUCCESS(tupper))
-    
-    @commands.command(**R.ADD_TUPPER_EMOTE.meta)
-    async def addTupperEmote(self, ctx: Ctx, *, args: str):
-        split = [arg.strip() for arg in args.split(";")]
-        tupperName, newName, newPrefix, newURL = self._parseTupperArgs(split)
-
-        tupper = self._getTupper(ctx, tupperName)
-        newEmote = tupper.addEmote(newName, newPrefix, newURL)
-        await ctx.send(R.ADD_TUPPER_EMOTE.SUCCESS(tupper, newEmote))
-    
-    @commands.command(**R.REMOVE_TUPPER_EMOTE.meta)
-    async def removeTupperEmote(self, ctx: Ctx, *, args: str):
-        split = [arg.strip() for arg in args.split(";")]
-        if len(split) < 2: raise Fail(R.ADD_TUPPER.TOO_FEW_ARGS(len(split)))
-        tupperName, name, *split = split
-        if split: raise Fail(R.ADD_TUPPER.TOO_MANY_ARGS(len(split)))
-        
-        tupper = self._getTupper(ctx, tupperName)
-        res = tupper.removeEmote(name)
-        if res == Codes.NOT_FOUND: raise Fail(R.ERR.EMOTE_NOT_FOUND(tupper.getName(), name))
-        await ctx.send(R.REMOVE_TUPPER_EMOTE.SUCCESS(tupper.getName(), res.getName()))
-    
-    @commands.command(**R.ADD_TUPPER_IMAGE.meta)
-    async def addTupperImage(self, ctx: Ctx, *, args: str):
-        split = [arg.strip() for arg in args.split(";")]
-        tupperName, emoteName, emoteURL = self._parseTupperArgs(split)
-"""
+    @commands.check(IDS.dmCheck)
+    async def newNPC(self, *, args: str):
+        split = args.split(";", 1)
+        if len(split) != 2: raise Fail()
+        name, link = split
