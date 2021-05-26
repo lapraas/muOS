@@ -57,6 +57,6 @@ def padItems(items: list[T], lenKey: Callable[[T], str], separator: str, rest: C
     strs: list[str] = []
     maxLen = max(len(lenKey(item)) for item in items)
     for item in items:
-        threshSpacing = " " * (maxLen - len(lenKey(item)) + 1)
+        threshSpacing = " " * (maxLen - len(lenKey(item)))
         strs.append(f"{lenKey(item)}{separator}{threshSpacing}{rest(item)}")
     return strs

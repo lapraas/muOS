@@ -56,7 +56,7 @@ class INFO:
     # Check
     RESULT_HAS = lambda items: {
         "title": f"Results",
-        "description": f"```{NEWLINE.join(_resultHas(items))}```"
+        "description": f"```diff\n{NEWLINE.join(_resultHas(items))}```"
     }
 
 _RawEmbed = Union[tuple[str, str], tuple[str, str, bool]]
@@ -139,7 +139,7 @@ def GET_MOVE_PAGES(move: Move):
 def _resultHas(items: list[Union[LearnedMove, Move]]):
     return padItems(
         items,
-        lambda move: move.dispName(),
+        lambda move: ("+ " if isinstance(move, LearnedMove) else "- ") + move.dispName(),
         " ",
-        lambda move: f"🟩 (via {move.dispMethods()})" if isinstance(move, LearnedMove) else f"🟥"
+        lambda move: f"(via {move.dispMethods()})" if isinstance(move, LearnedMove) else ""
     )
