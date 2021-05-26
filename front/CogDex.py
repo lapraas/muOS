@@ -240,7 +240,6 @@ class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
         # Make sure no other operators exist - can't mix.
         for otherOp in opFinds:
             if otherOp != op: raise Fail(D.ERR.MIXING_OPS(query))
-            re.split
 
         # Iterate through each qualifier.
         for qualifierStr in andOrSplitPat.split(qualifiersStr):
@@ -295,6 +294,13 @@ class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
                 learnedMove = targetPkmn.getMove(move.getName())
                 results.append(learnedMove)
             else:
-                results.append(move)
+                learnedMove = None
+                for prevoName in targetPkmn.getPrevolutions():
+                    prevo = POKEDEX.get(prevoName)
+                    if prevo.hasMove(move):
+                        learnedMove = prevo.getMove(move.getName()).getNewWithPrevo(prevo.dispName())
+                        results.append(learnedMove)
+                if not learnedMove:
+                    results.append(move)
         
         await ctx.send(embed=getMuOSEmbed(**D.INFO.RESULT_HAS(results)))

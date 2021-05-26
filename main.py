@@ -104,11 +104,12 @@ async def on_command_error(ctx: commands.Context, error: commands.CommandError):
         toRaise = error
     
     _formattedException = f"\n```\n{''.join(traceback.format_exception(type(error), error, error.__traceback__))}```"
-    if toRaise and ctx.guild.id == TEST.ID:
-        toSend += _formattedException
-    elif toRaise:
-        me = await client.fetch_user(MY_USER_ID)
-        await me.send(_formattedException)
+    if not len(_formattedException) > 1800:
+        if toRaise and ctx.guild.id == TEST.ID:
+            toSend += _formattedException
+        elif toRaise:
+            me = await client.fetch_user(MY_USER_ID)
+            await me.send(_formattedException)
     
     if ctx.command:
         toSend += f"\nIf you need help with this command, please use `{BOT_PREFIX}help {ctx.command.qualified_name}`."

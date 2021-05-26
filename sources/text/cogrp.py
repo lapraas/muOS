@@ -35,7 +35,6 @@ class SCENE(Cmd,
     BREAK = "<><><><><><><><>"
     PAUSED = "(Scene paused)"
     RESUMED = "(Scene unpaused)"
-    ADD_LINK: Callable[[str, str], str] = lambda message, link: f"[{message}]({link})"
 
 class NEW_NPC(Cmd,
     meta=[

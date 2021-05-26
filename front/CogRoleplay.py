@@ -39,27 +39,26 @@ class CogRoleplay(commands.Cog):
     def _listenTo(self, message: discord.WebhookMessage):
         self.listen.add(message.id)
     
-    async def replaceWithLink(self, channel: discord.TextChannel, notif: str):
-        if not notif == R.SCENE.BREAK:
-            return notif
+    async def getMsgToReference(self, channel: discord.TextChannel, notif: str):
+        if notif == R.SCENE.BREAK:
+            find = ["scene unpaused", "scene resumed", "<><>"]
+        elif notif == R.SCENE.PAUSED:
+            find = ["<><>"]
+        elif notif == R.SCENE.RESUMED:
+            find = ["scene paused"]
         channelMessage: discord.Message
         found = False
         async for channelMessage in channel.history(limit=200):
-            if channelMessage.author.bot and "<><>" in channelMessage.content:
+            if any(s in channelMessage.content.lower() for s in find):
                 found = True
                 break
         if found:
-            notif = R.SCENE.ADD_LINK(notif, channelMessage.jump_url)
-        return notif
+            return channelMessage
+        return None
     
-    async def getSceneNotif(self, channel: discord.TextChannel, notif: str):
-        notif = await self.replaceWithLink(channel, notif)
-        return notif
-    
-    async def sendSceneNotif(self, channel: discord.TextChannel, notif: str):
-        notif = await self.getSceneNotif(channel, notif)
-        webhook = self.webhooks[channel.id]
-        newMessage: discord.Message = await webhook.send(notif, wait=True, username=_webhookShortName, avatar_url=defaultImage)
+    async def sendSceneNotif(self, channel: discord.TextChannel, notif: str, manualRef: discord.Message=None):
+        ref = await self.getMsgToReference(channel, notif)
+        newMessage: discord.Message = await channel.send(notif, reference=ref if not manualRef else manualRef)
         return newMessage
     
     async def onMessage(self, message: discord.Message):
@@ -77,7 +76,7 @@ class CogRoleplay(commands.Cog):
         #    await webhook.send(content, username=tupper.getName(), avatar_url=emote.getURL())
     
     async def onReaction(self, message: discord.Message, emoji: str, user: Union[discord.User, discord.Member]):
-        if message.id in self.listen and not user.bot:
+        if not user.bot and message.author.id == self.bot.user.id:
             if emoji == "❌":
                 self.listen.discard(message.id)
                 await message.delete()
@@ -101,7 +100,7 @@ class CogRoleplay(commands.Cog):
         self._listenTo(message)
         await ctx.message.delete()
     
-    @commands.command(**R.ADD_TUPPER.meta)
+    @commands.command(**R.NEW_NPC.meta)
     @commands.check(IDS.dmCheck)
     async def newNPC(self, *, args: str):
         split = args.split(";", 1)

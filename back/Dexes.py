@@ -1,4 +1,5 @@
 
+from copy import deepcopy
 import json
 import re
 from typing import Callable, Generic, Optional, Type, TypeVar
@@ -84,6 +85,7 @@ class LearnedMove:
     def __init__(self, name: str, methods: list[tuple[str, str, int]]):
         self.name = name
         self.methods = LearnedMove.populateMethods(methods)
+        self.prevo = None
     
     @staticmethod
     def populateMethods(raw: list[tuple[str, str, int]]):
@@ -96,6 +98,10 @@ class LearnedMove:
         return self.name
     def getMethod(self, method: str):
         return self.methods.get(method)
+    def getNewWithPrevo(self, prevo: str):
+        new = deepcopy(self)
+        new.prevo = prevo
+        return new
     
     def getFromDex(self):
         return MOVEDEX.get(self.name)
@@ -103,7 +109,9 @@ class LearnedMove:
     def dispName(self):
         return self.getFromDex().dispName()
     def dispMethods(self):
-        return ", ".join(f"{method.dispType()}" for method in self.methods.values())
+        methodsStr = ", ".join(f"{method.dispType()}" for method in self.methods.values())
+        if not self.prevo: return methodsStr
+        return f"{methodsStr} as {self.prevo}"
 
 class Enum:
     @classmethod
@@ -231,11 +239,11 @@ class Pokemon(DexItem):
         self.weight = weight
         self.abilities = abilities
         self.hiddenAbility = hiddenAbility
-        self.moves = Pokemon.populateMoves(moves)
-        self.stats = Pokemon.populateStats(stats)
+        self.moves = self.populateMoves(moves)
+        self.stats = self.populateStats(stats)
         self.types = types
         self.varieties = varieties
-        self.evolutions = Pokemon.populateEvolutions(evolutions)
+        self.evolutions, self.prevolutions = self.populateEvolutions(evolutions)
         self.eggGroups = groups
         self.isBaby = baby
         self.isLegendary = legendary
@@ -243,26 +251,29 @@ class Pokemon(DexItem):
         self.color = color
         self.shape = shape
         self.gen = gen
-    @staticmethod
-    def populateMoves(raw: RawMoves):
+    def populateMoves(self, raw: RawMoves):
         moves: dict[str, LearnedMove] = {}
         for name in raw:
             methods = raw[name]
             moves[name] = LearnedMove(name, methods)
         return moves
-    @staticmethod
-    def populateStats(raw: RawStats):
+    def populateStats(self, raw: RawStats):
         stats: dict[str, Stat] = {}
         for statName in raw:
             stats[statName] = Stat(STATS.match(statName), *raw[statName])
         return stats
-    @staticmethod
-    def populateEvolutions(raw: RawEvolutions):
+    def populateEvolutions(self, raw: RawEvolutions):
         evolutions: list[Evolution] = []
+        prevolutions: list[str] = []
+        noMorePrevos = False
         for evo in raw:
+            if evo[0] == self.getName():
+                noMorePrevos = True
+            elif not noMorePrevos:
+                prevolutions.append(evo[0])
             for trigger, details in evo[1]:
                 evolutions.append(Evolution(evo[0], TRIGGERS.match(trigger), details))
-        return evolutions
+        return evolutions, prevolutions
     
     def getID(self): return self.id
     def getHeight(self): return round(self.height * 0.1, 1)
@@ -275,6 +286,7 @@ class Pokemon(DexItem):
     def getTypes(self): return self.types
     def getForms(self): return self.varieties
     def getEvolutions(self): return self.evolutions
+    def getPrevolutions(self): return self.prevolutions
     def getEggGroups(self): return self.eggGroups
     def getIsBaby(self): return self.isBaby
     def getIsLegendary(self): return self.isLegendary
