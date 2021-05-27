@@ -48,7 +48,7 @@ class CogRoleplay(commands.Cog):
             find = ["scene paused"]
         channelMessage: discord.Message
         found = False
-        async for channelMessage in channel.history(limit=200):
+        async for channelMessage in channel.history(limit=1000):
             if any(s in channelMessage.content.lower() for s in find):
                 found = True
                 break
