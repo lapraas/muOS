@@ -1,19 +1,15 @@
 
-from back.general import EMPTY
-import datetime as dt
 from front.CogMod import CogMod
-from typing import Literal, Optional, Union
+from typing import Optional, Union
 
 import discord
 import sources.text.cogrp as R
 from back.ids import IDS, IDs
-from back.npc import defaultImage
-from back.utils import Fail, paginate
+from back.utils import Fail
 from discord.ext import commands
 
 Ctx = commands.Context
 _webhookName = "muOS Tupperhook"
-_webhookShortName = "muOS"
 
 class CogRoleplay(commands.Cog):
     def __init__(self, bot: commands.Bot, cogMod: CogMod):

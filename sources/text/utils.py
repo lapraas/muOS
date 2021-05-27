@@ -25,9 +25,12 @@ emoji10 = "🔟"
 emojiNumbers = "🔢"
 emojiArrows = "↔️"
 
+emojiLock = "🔒"
+emojiUnlock = "🔓"
+
 smolArrows = [emojiPrior, emojiNext]
 arrows = [emojiFirst, emojiPrior, emojiNext, emojiLast]
 indices = [emoji1, emoji2, emoji3, emoji4, emoji5, emoji6, emoji7, emoji8, emoji9, emoji10]
 switches = [emojiNumbers, emojiArrows]
 
-paginationIndex = lambda index, length: f"Page {index} of {length}."
+paginationIndex = lambda index, length, locked: f"Page {index} of {length}." + (" Any user can navigate using reactions." if not locked else " The issuing user can navigate using reactions.")

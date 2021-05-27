@@ -109,5 +109,10 @@ class IDs(IDLists):
         if IDs.modCheck(ctx): return True
         return _checkRoles(ctx, IDS.getAll(IDs.dmRoles))
 
-with open("./sources/ids.json", "r") as f:
-    IDS = IDs(json.load(f))
+try:
+    with open("./sources/ids.json", "r") as f:
+        IDS = IDs(json.load(f))
+except FileNotFoundError:
+    with open("./sources/ids.json", "x") as f:
+        f.write("{}")
+        IDS = IDs({})

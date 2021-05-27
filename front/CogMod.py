@@ -22,7 +22,7 @@ T = TypeVar("T", bound="discord.Snowflake")
 class CogMod(commands.Cog, name=M.COG.NAME, description=M.COG.DESCRIPTION):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.oldDeleteEntries: dict[int, MiniEntry] = {}
+        self.oldEntries: dict[int, dict[int, MiniEntry]] = {}
         self.deleteIgnores: set[int] = {}
 
         self.setup()
@@ -30,8 +30,7 @@ class CogMod(commands.Cog, name=M.COG.NAME, description=M.COG.DESCRIPTION):
     def addDeleteIgnore(self, mid: int):
         self.deleteIgnores.add(mid)
     
-    @staticmethod
-    async def getNewEntries(guild: discord.Guild) -> dict[int, MiniEntry]:
+    async def getNewEntries(self, guild: discord.Guild) -> dict[int, MiniEntry]:
         
         timeout = 300
         newDeleteEntries: dict[int, MiniEntry]  = {}
@@ -43,12 +42,16 @@ class CogMod(commands.Cog, name=M.COG.NAME, description=M.COG.DESCRIPTION):
             if not entry.action == discord.AuditLogAction.message_delete: continue
             
             newDeleteEntries[entry.id] = MiniEntry(entry.user.id, entry.target.id, entry.extra.count)
-        
         return newDeleteEntries
     
-    async def onReady(self, guild: discord.Guild):
-        self.oldDeleteEntries = await CogMod.getNewEntries(guild)
-    
+    async def onReady(self):
+        guild: discord.Guild
+        async for guild in self.bot.fetch_guilds(limit=None):
+            try:
+                self.oldEntries[guild.id] = self.getNewEntries(guild)
+            except discord.Forbidden:
+                print(f"Missing permission to view audit logs in {guild.name}")
+            
     async def onMessageDelete(self, message: discord.Message):
         if message.id in self.deleteIgnores:
             self.deleteIgnores.discard(message.id)
@@ -61,15 +64,16 @@ class CogMod(commands.Cog, name=M.COG.NAME, description=M.COG.DESCRIPTION):
         ):
             return
         
-        newDeleteEntries = await CogMod.getNewEntries(message.guild)
+        oldEntries = self.oldEntries[message.guild.id]
+        newEntries = await CogMod.getNewEntries(message.guild)
         
         retrievedDeleterID: Optional[int] = None
-        for newID in newDeleteEntries:
-            newEntry = newDeleteEntries[newID]
+        for newID in newEntries:
+            newEntry = newEntries[newID]
             if not newEntry.targetUserID == message.author.id: continue
             
-            if newID in self.oldDeleteEntries:
-                oldEntry = self.oldDeleteEntries[newID]
+            if newID in oldEntries:
+                oldEntry = oldEntries[newID]
                 if newEntry.count == oldEntry.count + 1:
                     retrievedDeleterID = newEntry.userID
                     break
@@ -86,7 +90,7 @@ class CogMod(commands.Cog, name=M.COG.NAME, description=M.COG.DESCRIPTION):
                 embed=message.embeds[0] if message.embeds else None,
                 files=[await attachment.to_file(use_cached=True) for attachment in message.attachments]
             )
-        self.oldDeleteEntries = newDeleteEntries
+        self.oldEntries[message.guild.id] = newEntries
     
     def makeIDChanger(self, check: Callable[[Ctx], bool], listTarget: str, type_: Type[T],
         addMeta: Cmd, addSender: Callable[[Ctx, bool, T], Coroutine],

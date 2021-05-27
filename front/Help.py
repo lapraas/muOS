@@ -8,7 +8,6 @@ from discord.ext import commands
 
 
 def getNonhiddenCommands(ctx: commands.Context, commands: list[commands.Command], getter: Callable[[commands.Command], Union[commands.Command, str]]=lambda x: x) -> list[Union[commands.Command, str]]:
-    print([command.name for command in commands])
     return [getter(command) for command in commands if all(check(ctx) for check in command.checks)]
 
 class Help(commands.DefaultHelpCommand):
@@ -17,11 +16,11 @@ class Help(commands.DefaultHelpCommand):
         cogNames = [cog.qualified_name for cog in mapping if isinstance(cog, commands.Cog) and getNonhiddenCommands(self.context, mapping[cog])]
         for i, cog in enumerate(mapping):
             if not cog: continue
-            cmds = mapping[cog]
+            cmds = getNonhiddenCommands(self.context, mapping[cog], lambda cmd: cmd.qualified_name)
             if not cmds: continue
             pages.append({
                 "content": T.HELP.cogPaginationContent(cogNames, i),
-                "embed": getMuOSEmbed(**T.HELP.cogEmbed(cog.qualified_name, cog.description, getNonhiddenCommands(self.context, cmds, lambda cmd: cmd.qualified_name)))
+                "embed": getMuOSEmbed(**T.HELP.cogEmbed(cog.qualified_name, cog.description, cmds))
             })
         await paginateDEPR(self.context, pages, True)
     

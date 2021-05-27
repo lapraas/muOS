@@ -42,6 +42,7 @@ async def changeAvatar():
 async def on_ready():
     print(f"Logged in as {client.user}.")
     await cogRoleplay.onReady()
+    await cogMod.onReady()
     now = dt.datetime.now()
     then = now.replace(day=now.day + now.day % 2, hour=0, minute=0, second=0, microsecond=0)
     if now > then:
