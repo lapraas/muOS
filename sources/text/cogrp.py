@@ -41,7 +41,9 @@ class NEW_NPC(Cmd,
         "newnpc", "addnpc"
     ]
 ):
-    pass
+    BAD_ARGS: Callable[[int], str] = lambda leng: f"This command takes two semicolon-separated arguments (got {leng})."
+    BAD_LINK = "The link given didn't match as a valid link."
+    EXISTS: Callable[[str], str] = lambda name: f"A NPC with the name `{name}` already exists."
 
 class ERR:
     NOT_IN_RP_CHANNEL = "This command can't be used in a channel that's not for RP."

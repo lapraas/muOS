@@ -1,15 +1,19 @@
 
+from back.npc import NPC_LIST
 from front.CogMod import CogMod
 from typing import Optional, Union
 
 import discord
 import sources.text.cogrp as R
+import re
 from back.ids import IDS, IDs
 from back.utils import Fail
 from discord.ext import commands
 
 Ctx = commands.Context
 _webhookName = "muOS Tupperhook"
+
+linkRe = re.compile(r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)")
 
 class CogRoleplay(commands.Cog):
     def __init__(self, bot: commands.Bot, cogMod: CogMod):
@@ -100,5 +104,14 @@ class CogRoleplay(commands.Cog):
     @commands.check(IDS.dmCheck)
     async def newNPC(self, *, args: str):
         split = args.split(";", 1)
-        if len(split) != 2: raise Fail()
+        if len(split) != 2: raise Fail(R.NEW_NPC.BAD_ARGS(len(split)))
         name, link = split
+        
+        if not re.match(link): raise Fail(R.NEW_NPC.BAD_LINK)
+
+        res = NPC_LIST.add(name, link)
+        if not res: raise Fail(R.NEW_NPC.EXISTS(name))
+    
+    @commands.check(IDS.dmCheck)
+    async def rmNPC(self, *, name: str):
+        res = NPC_LIST.remove(name)

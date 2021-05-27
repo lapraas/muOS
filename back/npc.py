@@ -3,6 +3,7 @@
 import re
 import discord
 from discord.ext import commands
+import json
 
 Ctx = commands.Context
 
@@ -16,14 +17,18 @@ class NPC:
         self.name = name
         self.image = image
     
+    def json(self):
+        return (self.name, self.image)
+    
     def getName(self): return self.name
     def getImage(self): return self.image
 
     def setImage(self): return self.image
 
 class NPCList:
-    def __init__(self, raw: dict[str, tuple[str, str]]):
+    def __init__(self, path: str, raw: dict[str, tuple[str, str]]):
         self.npcs: dict[str, NPC] = raw
+    
     
     def match(self, text: str):
         return self.npcs.get(text.lower())
@@ -33,6 +38,7 @@ class NPCList:
             return False
         newNPC = NPC(name=name, image=image)
         self.npcs[name.lower()] = newNPC
+        _write()
         return newNPC
     
     def remove(self, name: str):
@@ -46,3 +52,16 @@ class NPCList:
         if not npc:
             return False
         npc.setImage(image)
+    
+path = "./sources/npcs.json"
+try:
+    with open(path, "r") as f:
+        NPC_LIST = NPCList(json.load(f))
+except FileNotFoundError:
+    with open(path, "x") as f:
+        f.write("{}")
+        NPC_LIST = NPCList({})
+
+def _write():
+    with open(path, "w") as f:
+        json.dump(NPC_LIST, f)

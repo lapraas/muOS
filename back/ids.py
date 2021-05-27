@@ -1,5 +1,6 @@
 
 from __future__ import annotations
+from back.jdict import JDict, JObj
 
 import json
 from typing import Type, overload
@@ -39,6 +40,10 @@ class IOA:
 class JIDsKeyError(KeyError):
     def __init__(self, name: str, cls: Type[IDLists]) -> None:
         super().__init__(f"Name {name} did not match any variables for the class {cls}")
+
+class IDLists2(JDict):
+    path = "./sources/ids.json"
+    jObj = set
 
 class IDLists:
     def __init__(self, j: dict[str, set[int]]):
