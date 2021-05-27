@@ -56,7 +56,7 @@ class CogMod(commands.Cog, name=M.COG.NAME, description=M.COG.DESCRIPTION):
         if (
             isinstance(message.channel, discord.DMChannel) or
             not message.guild.id in LOG_CHANNEL_IDS or
-            message.author.bot or
+            message.author.id == self.bot.user.id or
             message.content.startswith(determinePrefix(None, message))
         ):
             return
