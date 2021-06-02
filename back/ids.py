@@ -41,10 +41,6 @@ class JIDsKeyError(KeyError):
     def __init__(self, name: str, cls: Type[IDLists]) -> None:
         super().__init__(f"Name {name} did not match any variables for the class {cls}")
 
-class IDLists2(JDict):
-    path = "./sources/ids.json"
-    jObj = set
-
 class IDLists:
     def __init__(self, j: dict[str, set[int]]):
         for name in j:

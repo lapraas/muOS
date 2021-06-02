@@ -16,11 +16,11 @@ class JObj(abc.ABC, Generic[_OT]):
         pass
 
 _K = TypeVar("_K")
-_T = TypeVar("_T")
-_Raw = dict[_K, Any]
+_T = TypeVar("_T", bound=JObj)
+_Raw = dict[_K, _OT]
 class JDict(JObj, Generic[_K, _T]):
     path: str
-    jObjClass: Union[Type[_T], Type]
+    jObjClass: Type[_T]
     d: dict[_K, _T]
 
     @classmethod
@@ -32,16 +32,12 @@ class JDict(JObj, Generic[_K, _T]):
             with open(cls.path, "x") as f:
                 f.write("{}")
                 raw = {}
-        return cls(raw, cls.path)
+        return cls(raw)
     
     def dump(self):
         raw = self.serialize()
         with open(self.path, "w") as f:
             json.dump(raw, f)
-
-    def __init__(self, raw: _Raw, path: str):
-        super().__init__(raw)
-        self.path = path
     
     def build(self, raw: _Raw):
         self.d = {}
@@ -53,8 +49,5 @@ class JDict(JObj, Generic[_K, _T]):
         raw = {}
         for name in self.d:
             obj = self.d[name]
-            if isinstance(obj, JObj):
-                raw[name] = obj.serialize()
-            else:
-                raw[name] = obj
+            raw[name] = obj.serialize()
         return raw

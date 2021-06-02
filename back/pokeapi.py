@@ -153,6 +153,9 @@ def getMoves(aMoves: PAMoves):
                 methods.append((version, method, level))
         if not methods: continue # ignore unmatched versions of the game (we only want us/um)
         name = getName(rawMove["move"])
+        if name == "vise-grip":
+            print("fuck you, pokeapi", end=" ", flush=True)
+            name = "vice-grip"
         moves[name] = methods
     return moves
 
@@ -170,12 +173,13 @@ def _addMovesFromPDB(moveSoup: BeautifulSoup, versionText: str, checkText: str, 
         
         moveName: str = tr.find("a", class_="ent-name")["href"].split("/")[2].lower()
         if moveName == "vise-grip":
+            print("fuck you pokemondb", end=" ", flush=True)
             moveName = "vice-grip"
         if not moveName in moves:
             moves[moveName] = []
         number = 0
         if includeNumber:
-            number = int(tr.find("td", class_="cell-num").getText().lower())
+            number = int(tr.find("td", class_="cell-num").getText())
         moves[moveName].append((versionText, dexText, number))
     
 def addMissedMoves(pkid: int, existingMoves: RawMoves):
