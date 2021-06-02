@@ -1,6 +1,12 @@
 
 from typing import NamedTuple, Optional, TypedDict
 
+Payload = TypedDict("Payload", {
+    "op": int,
+    "t": Optional[str],
+    "d": dict
+})
+
 RawSnowflake = str
 RawUser = TypedDict("RawUser", {
     "id": RawSnowflake, "username": str, "discriminator": str, "avatar": str,
