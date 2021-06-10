@@ -2,6 +2,7 @@
 import json
 import random
 import re
+import emoji
 from typing import Optional, Union
 
 import discord
@@ -96,6 +97,15 @@ def getMuOSEmbed(*, title: str, description: str=None, fields: list[Union[tuple[
     e = getEmbed(title=title, description=description, fields=fields, image=imageURL, footer=footer, url=url, thumbnail=thumbnail, author=author)
     return e
 
+emojiPat = re.compile(r"(<:\w+:\d+>)")
+def getEmojisFromText(text: str):
+    emojis: list[str] = []
+    for char in text:
+        if char in emoji.UNICODE_EMOJI_ENGLISH:
+            emojis.append(char)
+    for match in emojiPat.findall(text):
+        emojis.append(match)
+    return emojis
 class Page:
     def __init__(self, content: Optional[str]=None, embed: Optional[discord.Embed]=None):
         self.content = content

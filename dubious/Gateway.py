@@ -33,7 +33,7 @@ class Gateway:
     async def loopRecv(self):
         data = await self.ws.recv()
         payload: Payload = json.loads(data)
-        self.callback(payload["op"], payload["t"], payload["d"])
+        await self.callback(payload["op"], payload["t"], payload["d"])
 
     async def loopSend(self):
         payload = await self.queue.get()
