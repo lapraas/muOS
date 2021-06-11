@@ -10,11 +10,11 @@ from dubious.raw import Payload
 GATEWAY_URI = "wss://gateway.discord.gg/?v=9&encoding=json"
 
 class Gateway:
-    def __init__(self, uri: str, callback: Callable[[int, str, dict], Coroutine]):
+    def __init__(self, uri: str):
         self.uri = uri
-        self.callback = callback
 
-        self.queue: asyncio.Queue[Payload] = asyncio.Queue()
+        self.sendQ: asyncio.Queue[Payload] = asyncio.Queue()
+        self.recvQ: asyncio.Queue[Payload] = asyncio.Queue()
         self.started = False
         self.ws: client.WebSocketClientProtocol = None
     
@@ -24,7 +24,6 @@ class Gateway:
         loop.create_task(self.loopClosed())
         loop.create_task(self.loopRecv())
         loop.create_task(self.loopSend())
-        loop.run_forever()
     
     async def loopClosed(self):
         await self.ws.wait_closed()
@@ -33,9 +32,17 @@ class Gateway:
     async def loopRecv(self):
         data = await self.ws.recv()
         payload: Payload = json.loads(data)
-        await self.callback(payload["op"], payload["t"], payload["d"])
+        print(f"R: {payload}")
+        await self.recvQ.put(payload)
 
     async def loopSend(self):
-        payload = await self.queue.get()
+        payload = await self.sendQ.get()
         data = json.dumps(payload)
+        print(f"S: {data}")
         await self.ws.send(data)
+    
+    async def recv(self):
+        return await self.recvQ.get()
+    
+    async def send(self, payload: Payload):
+        await self.sendQ.put(payload)

@@ -1,13 +1,17 @@
 
 import asyncio
+import os
 
 import nest_asyncio
 nest_asyncio.apply()
 
 import dubious
 
-async def callback(a, b, c):
-    print(a, b, c)
+key = os.getenv("DISCORD_SECRET_MUOS")
+if not key:
+    with open("./sources/key.txt", "r") as f:
+        key = f.read()
 
-g = dubious.Gateway(dubious.GATEWAY_URI, callback)
-asyncio.get_event_loop().run_until_complete(g.start())
+g = dubious.Gateway(dubious.GATEWAY_URI)
+client = dubious.Client(key, 7, g)
+asyncio.run(client.start())
