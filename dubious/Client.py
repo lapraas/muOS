@@ -36,14 +36,18 @@ class Client:
         self.guildIDs: Optional[list[raw.UnavailableGuild]] = None
 
         self.handlers = {
+            1: self.onBeat,
             10: self.onHello,
-            11: self.onHelloAck,
+            11: self.onBeatAck,
             "READY": self.onReady,
         }
 
         self.beatAcked.set()
 
     async def start(self):
+        """ Starts the listen loop and the beat loop for the Client.
+            Starts the Gateway's loops.
+            Runs the asyncio loop forever. """
         loop = asyncio.get_running_loop()
         loop.create_task(self.loopRecv())
         loop.create_task(self.loopBeat())
@@ -80,8 +84,11 @@ class Client:
         self.beating.set()
         await asyncio.sleep(3)
         await self.sendIdentify()
+    
+    async def onBeat(self, _):
+        await self.sendBeat()
 
-    async def onHelloAck(self, _):
+    async def onBeatAck(self, _):
         self.beatAcked.set()
     
     async def onReady(self, payload: raw.Ready):
@@ -99,6 +106,8 @@ class Client:
         })
     
     async def sendReconnect(self):
+        self.ready.clear()
+        
         await self.gateway.send({
             "op": 6,
         })
