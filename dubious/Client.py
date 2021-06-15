@@ -41,6 +41,8 @@ class Client:
             "READY": self.onReady,
         }
 
+        self.beatAcked.set()
+
     async def start(self):
         loop = asyncio.get_running_loop()
         loop.create_task(self.loopRecv())
@@ -75,7 +77,6 @@ class Client:
     
     async def onHello(self, payload: raw.Hello):
         self.beatTime = payload["heartbeat_interval"]
-        await asyncio.sleep(2)
         self.beating.set()
         await asyncio.sleep(3)
         await self.sendIdentify()
@@ -86,6 +87,8 @@ class Client:
     async def onReady(self, payload: raw.Ready):
         self.gatewayVersion = payload["v"]
         self.user = User(payload["user"])
+        self.sessionID = payload["session_id"]
+        self.application = Application(payload["application"])
         self.guildIDs = payload["guilds"]
         self.ready.set()
     
