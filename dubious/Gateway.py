@@ -1,5 +1,6 @@
 
 import asyncio
+import datetime as dt
 import json
 from typing import Callable, Coroutine, Optional
 
@@ -8,6 +9,9 @@ from websockets import client
 from dubious.raw import Payload
 
 GATEWAY_URI = "wss://gateway.discord.gg/?v=9&encoding=json"
+
+def printWithTime(text: str):
+    print(f"[{str(dt.datetime.now().time())[:-7]}] {text}")
 
 class Gateway:
     def __init__(self, uri: str):
@@ -31,20 +35,20 @@ class Gateway:
     
     async def loopClosed(self):
         await self.ws.wait_closed()
-        print("websocket closed\n" + f"  code: {self.ws.close_code}" + "\n" + f"  reason: {self.ws.close_reason}")
+        printWithTime("websocket closed\n" + f"  code: {self.ws.close_code}" + "\n" + f"  reason: {self.ws.close_reason}")
     
     async def loopRecv(self):
         while self.started.is_set():
             data = await self.ws.recv()
             payload: Payload = json.loads(data)
-            print(f"R: {json.dumps(payload, indent=2)}")
+            printWithTime(f"R: {payload}")
             await self.recvQ.put(payload)
 
     async def loopSend(self):
         while self.started.is_set():
             payload = await self.sendQ.get()
             data = json.dumps(payload)
-            print(f"S: {json.dumps(payload, indent=2)}")
+            printWithTime(f"S: {payload}")
             await self.ws.send(data)
     
     async def recv(self):

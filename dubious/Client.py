@@ -25,6 +25,8 @@ class Client:
         self.beatAcked = asyncio.Event()
         # Whether or not the heartbeat loop is active.
         self.beating = asyncio.Event()
+        # The last sequence number gotten with a recieved payload.
+        self.sequence: Optional[int] = None
 
         # Whether or not the Client has recieved the Ready event.
         self.ready = asyncio.Event()
@@ -59,6 +61,7 @@ class Client:
             payload = await self.gateway.recv()
             op = payload["op"]
             t = payload["t"]
+            self.sequence = payload["s"]
             d = payload["d"]
             if t:
                 handler = self.handlers.get(t)
@@ -72,26 +75,35 @@ class Client:
     async def loopBeat(self):
         while True:
             await self.beating.wait()
+            print("beating")
             await asyncio.sleep(self.beatTime / 1000)
             if self.beatAcked.is_set():
                 await self.sendBeat()
-                await self.beatAcked.clear()
+                self.beatAcked.clear()
             else:
                 await self.sendReconnect()
     
+    async def onBeat(self, _):
+        """ Callback for opcode 1. """
+        await self.sendBeat()
+    
     async def onHello(self, payload: raw.Hello):
+        """ Callback for opcode 10.
+            Sets the heartbeat interval and unblocks the heartbeat loop.
+            Sends a heartbeat payload, then waits to send an identify payload."""
         self.beatTime = payload["heartbeat_interval"]
         self.beating.set()
+        await self.sendBeat()
         await asyncio.sleep(3)
         await self.sendIdentify()
-    
-    async def onBeat(self, _):
-        await self.sendBeat()
 
     async def onBeatAck(self, _):
+        """ Callback for opcode 11.
+            Sets a flag that the last heartbeat was acknowledged. """
         self.beatAcked.set()
     
     async def onReady(self, payload: raw.Ready):
+        """ Callback for event READY. """
         self.gatewayVersion = payload["v"]
         self.user = User(payload["user"])
         self.sessionID = payload["session_id"]
@@ -102,11 +114,12 @@ class Client:
     async def sendBeat(self):
         await self.gateway.send({
             "op": 1,
-            "d": None
+            "d": self.sequence
         })
     
     async def sendReconnect(self):
         self.ready.clear()
+        await self.gateway.restart()
         
         await self.gateway.send({
             "op": 6,

@@ -4,7 +4,8 @@ from typing import NamedTuple, Optional, TypedDict
 Payload = TypedDict("Payload", {
     "op": int,
     "t": Optional[str],
-    "d": dict
+    "d": dict,
+    "s": Optional[int]
 })
 
 RawSnowflake = str
