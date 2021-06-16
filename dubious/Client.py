@@ -3,11 +3,18 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from typing import Optional
+from typing import Callable, Coroutine, Optional
 
 from dubious.Gateway import Gateway
 import dubious.raw as raw
 from dubious.types import User, Application
+
+
+class Handler:
+    def __init__(self, func: Callable[[raw.Payload], Coroutine]):
+        self.func = func
+        
+
 
 
 class Client:
@@ -35,16 +42,28 @@ class Client:
         self.user: Optional[User] = None
         self.sessionID: Optional[str] = None
         self.application: Optional[Application] = None
-        self.guildIDs: Optional[list[raw.UnavailableGuild]] = None
+        self.rawGuilds: Optional[list[raw.UnavailableGuild]] = None
 
         self.handlers = {
-            1: self.onBeat,
-            10: self.onHello,
-            11: self.onBeatAck,
-            "READY": self.onReady,
+            1: [self.onBeat],
+            10: [self.onHello],
+            11: [self.onBeatAck],
+            "READY": [self.onReady],
+            "RESUMED": [self.onResumed],
+            "RECONNECT": [self.onReconnect],
+            "INVALID_SESSION": [],
+            "APPLICATION_COMMAND_CREATE": [],
         }
 
         self.beatAcked.set()
+    
+    def handler(self, event: str):
+        """ Decorator to add event handlers to the Client. """
+    
+    def addHandler(self, event: str, handler: Callable[[raw.Payload], Coroutine]):
+        if not event in self.handlers:
+            raise NotImplementedError()
+        self.handlers[event].append(handler)
 
     async def start(self):
         """ Starts the listen loop and the beat loop for the Client.
@@ -61,7 +80,7 @@ class Client:
             payload = await self.gateway.recv()
             op = payload["op"]
             t = payload["t"]
-            self.sequence = payload["s"]
+            self.sequence = payload["s"] if payload["s"] != None else self.sequence
             d = payload["d"]
             if t:
                 handler = self.handlers.get(t)
@@ -81,11 +100,15 @@ class Client:
                 await self.sendBeat()
                 self.beatAcked.clear()
             else:
-                await self.sendReconnect()
+                await self.reconnect()
     
     async def onBeat(self, _):
         """ Callback for opcode 1. """
         await self.sendBeat()
+    
+    async def onConnectionLost(self, _):
+        """ Callback for opcode 9. """
+        await self.reconnect()
     
     async def onHello(self, payload: raw.Hello):
         """ Callback for opcode 10.
@@ -103,29 +126,35 @@ class Client:
         self.beatAcked.set()
     
     async def onReady(self, payload: raw.Ready):
-        """ Callback for event READY. """
+        """ Callback for event READY.
+            Stores the client's User object, the session ID, the client's Application object, and the incomplete Guild objects.
+            Sets the ready flag. """
         self.gatewayVersion = payload["v"]
         self.user = User(payload["user"])
         self.sessionID = payload["session_id"]
         self.application = Application(payload["application"])
-        self.guildIDs = payload["guilds"]
+        self.rawGuilds = payload["guilds"]
         self.ready.set()
     
+    async def onResumed(self, _):
+        """ Callback for event RESUMED.
+            Sets the ready flag. """
+        self.ready.set()
+    
+    async def onReconnect(self, _):
+        """ Callback for event RECONNECT.
+            Calls the reconnect routine. """
+        await self.reconnect()
+    
     async def sendBeat(self):
+        """ Sends a heartbeat payload. """
         await self.gateway.send({
             "op": 1,
             "d": self.sequence
         })
     
-    async def sendReconnect(self):
-        self.ready.clear()
-        await self.gateway.restart()
-        
-        await self.gateway.send({
-            "op": 6,
-        })
-    
     async def sendIdentify(self):
+        """ Sends an identify payload. """
         await self.gateway.send({
             "op": 2,
             "d": {
@@ -136,5 +165,22 @@ class Client:
                     "$browser": "dubious",
                     "$device": "dubious"
                 }
+            }
+        })
+    
+    async def reconnect(self):
+        """ Clears the ready flag.
+            Restarts the gateway's websocket connection.
+            Sends a reconnect payload. """
+
+        self.ready.clear()
+        await self.gateway.restart()
+        
+        await self.gateway.send({
+            "op": 6,
+            "d": {
+                "token": self.token,
+                "session_id": self.sessionID,
+                "seq": self.sequence
             }
         })

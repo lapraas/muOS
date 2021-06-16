@@ -2,7 +2,7 @@
 import asyncio
 import datetime as dt
 import json
-from typing import Callable, Coroutine, Optional
+from typing import Optional
 
 from websockets import client
 
