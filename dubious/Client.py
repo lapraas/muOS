@@ -93,9 +93,7 @@ class Client(HandlesEvents):
     
     async def loopRecv(self):
         while True:
-            fut = asyncio.ensure_future(self.recv())
-            await fut
-            fut.result()
+            await self.recv()
             
         
     async def beat(self):
