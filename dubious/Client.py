@@ -3,22 +3,33 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from typing import Callable, Coroutine, Optional
+from typing import Callable, Coroutine, Optional, Union
 
-from dubious.Gateway import Gateway
 import dubious.raw as raw
-from dubious.types import User, Application
+from dubious.Gateway import Gateway
+from dubious.types import Application, User
 
+class HandlesEvents:
+    handlers: dict[int, Callable[[raw.Payload], Coroutine]]
 
-class Handler:
-    def __init__(self, func: Callable[[raw.Payload], Coroutine]):
-        self.func = func
-        
+    def __init__(self):
+        self.handlers = {}
+        for attrName in dir(self):
+            attr = self.__getattribute__(attrName)
+            if not callable(attr): continue
+            if attrName in raw.EVENT.__dict__:
+                self.handlers[raw.EVENT.__dict__[attrName]] = attr
+    
+    def getHandler(self, t: str):
+        if not t in raw.EVENT.__dict__.values():
+            raise Exception(f"{t} is not a valid event.")
+        if not t in self.handlers:
+            raise NotImplementedError()
+        return self.handlers[t]
 
-
-
-class Client:
+class Client(HandlesEvents):
     def __init__(self, token: str, intents: int, gateway: Gateway):
+        super().__init__()
         # The client's secret.
         self.token = token
         # The intents for the client.
@@ -44,63 +55,61 @@ class Client:
         self.application: Optional[Application] = None
         self.rawGuilds: Optional[list[raw.UnavailableGuild]] = None
 
-        self.handlers = {
-            1: [self.onBeat],
-            10: [self.onHello],
-            11: [self.onBeatAck],
-            "READY": [self.onReady],
-            "RESUMED": [self.onResumed],
-            "RECONNECT": [self.onReconnect],
-            "INVALID_SESSION": [],
-            "APPLICATION_COMMAND_CREATE": [],
+        self.handlers = {**self.handlers,
+            1: self.onBeat,
+            9: self.onConnectionLost,
+            10: self.onHello,
+            11: self.onBeatAck
         }
 
         self.beatAcked.set()
-    
-    def handler(self, event: str):
-        """ Decorator to add event handlers to the Client. """
-    
-    def addHandler(self, event: str, handler: Callable[[raw.Payload], Coroutine]):
-        if not event in self.handlers:
-            raise NotImplementedError()
-        self.handlers[event].append(handler)
 
-    async def start(self):
+    def start(self):
         """ Starts the listen loop and the beat loop for the Client.
             Starts the Gateway's loops.
             Runs the asyncio loop forever. """
-        loop = asyncio.get_running_loop()
+        loop = asyncio.get_event_loop()
         loop.create_task(self.loopRecv())
         loop.create_task(self.loopBeat())
-        await self.gateway.start()
-        loop.run_forever()
+        self.gateway.start(loop)
+        asyncio.run(self.gateway.connect())
+    
+    async def recv(self):
+        payload = await self.gateway.recv()
+        op = payload["op"]
+        t = payload["t"]
+        self.sequence = payload["s"] if payload["s"] != None else self.sequence
+        d = payload["d"]
+        if t:
+            handler = self.getHandler(t)
+        else:
+            handler = self.handlers.get(op)
+        if handler:
+            print(f"[Client] calling handler for {op}:{t}")
+            await handler(d)
+            print("[Client] done with handler")
+        else:
+            raise NotImplementedError()
     
     async def loopRecv(self):
         while True:
-            payload = await self.gateway.recv()
-            op = payload["op"]
-            t = payload["t"]
-            self.sequence = payload["s"] if payload["s"] != None else self.sequence
-            d = payload["d"]
-            if t:
-                handler = self.handlers.get(t)
-            else:
-                handler = self.handlers.get(op)
-            if handler:
-                await handler(d)
-            else:
-                raise NotImplementedError()
+            fut = asyncio.ensure_future(self.recv())
+            await fut
+            fut.result()
+            
+        
+    async def beat(self):
+        await self.beating.wait()
+        await asyncio.sleep(self.beatTime / 1000)
+        if self.beatAcked.is_set():
+            self.beatAcked.clear()
+            await self.sendBeat()
+        else:
+            await self.reconnect()
         
     async def loopBeat(self):
         while True:
-            await self.beating.wait()
-            print("beating")
-            await asyncio.sleep(self.beatTime / 1000)
-            if self.beatAcked.is_set():
-                await self.sendBeat()
-                self.beatAcked.clear()
-            else:
-                await self.reconnect()
+            await self.beat()
     
     async def onBeat(self, _):
         """ Callback for opcode 1. """
@@ -123,6 +132,7 @@ class Client:
     async def onBeatAck(self, _):
         """ Callback for opcode 11.
             Sets a flag that the last heartbeat was acknowledged. """
+        print("beat acknowledged")
         self.beatAcked.set()
     
     async def onReady(self, payload: raw.Ready):

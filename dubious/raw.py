@@ -1,5 +1,6 @@
 
-from typing import NamedTuple, Optional, TypedDict
+from types import MethodType
+from typing import Callable, Coroutine, NamedTuple, Optional, TypedDict, Union
 
 Payload = TypedDict("Payload", {
     "op": int,
@@ -65,7 +66,6 @@ class EVENT:
     onVoiceStateUpdate = "VOICE_STATE_UPDATE" # someone joined, left, or moved a voice channel
     onVoiceServerUpdate = "VOICE_SERVER_UPDATE" # guild's voice server was updated
     onWebhooksUpdate = "WEBHOOKS_UPDATE" # guild channel webhook was created, update, or deleted
-
 
 RawSnowflake = str
 RawUser = TypedDict("RawUser", {

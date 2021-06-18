@@ -25,13 +25,14 @@ class Gateway:
         self.recvTask: Optional[asyncio.Task] = None
         self.sendTask: Optional[asyncio.Task] = None
     
-    async def start(self):
-        self.ws = await client.connect(self.uri)
-        self.started.set()
-        loop = asyncio.get_running_loop()
+    def start(self, loop: asyncio.AbstractEventLoop):
         self.closedTask = loop.create_task(self.loopClosed())
         self.recvTask = loop.create_task(self.loopRecv())
         self.sendTask = loop.create_task(self.loopSend())
+    
+    async def connect(self):
+        self.ws = await client.connect(self.uri)
+        self.started.set()
     
     async def loopClosed(self):
         await self.ws.wait_closed()
@@ -43,6 +44,7 @@ class Gateway:
             payload: Payload = json.loads(data)
             printWithTime(f"R: {payload}")
             await self.recvQ.put(payload)
+            print("put into recvQ")
 
     async def loopSend(self):
         while self.started.is_set():
@@ -52,6 +54,7 @@ class Gateway:
             await self.ws.send(data)
     
     async def recv(self):
+        print("[Gateway] recv called")
         return await self.recvQ.get()
     
     async def send(self, payload: Payload):
@@ -59,12 +62,13 @@ class Gateway:
     
     async def stop(self, code=1000):
         self.started.clear()
-        await asyncio.wait_for(self.closedTask)
-        await asyncio.wait_for(self.recvTask)
-        await asyncio.wait_for(self.sendTask)
+        await self.closedTask
+        await self.recvTask
+        await self.sendTask
         await self.ws.close(code)
 
     async def restart(self):
         await self.stop()
         await asyncio.sleep(2)
-        await self.start()
+        self.start()
+        await self.connect()

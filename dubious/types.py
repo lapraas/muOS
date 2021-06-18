@@ -12,17 +12,20 @@ class Snowflake:
 
 class User:
     def __init__(self, raw: RawUser):
+        print(f"making user from {raw}")
         self.id = Snowflake(raw["id"])
+        print("made id")
         self.username = raw["username"]
         self.discriminator = raw["discriminator"]
         self.avatar = raw["avatar"]
         self.isBot = raw["bot"]
-        self.system = raw["system"]
         self.usesTwoFactor = raw["mfa_enabled"]
-        self.locale = raw["locale"]
         self.isVerified = raw["verified"]
         self.email = raw["email"]
         self.flags = raw["flags"]
+        
+        self.system = raw["system"]
+        self.locale = raw["locale"]
         self.premiumType = raw["premium_type"]
         self.publicFlags = raw["public_flags"]
 
