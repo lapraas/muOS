@@ -9,7 +9,7 @@ from typing import Callable, Coroutine, Optional, TypedDict, Union
 
 import websockets
 
-from dubious.raw import RawApplication, Hello, Ready, RawSnowflake, UnavailableGuild, RawUser
+from dubious.raw import RawApplication, Hello, Ready, RawSnowflake, RawUnavailableGuild, RawUser
 
 aloop = asyncio.get_event_loop()
 
@@ -138,7 +138,7 @@ class Client:
         self.user: Optional[User] = None
         self.sessionID: Optional[str] = None
         self.application: Optional[Application] = None
-        self.guildIDs: Optional[list[UnavailableGuild]] = None
+        self.guildIDs: Optional[list[RawUnavailableGuild]] = None
     
     async def start(self):
         await self.req.start()

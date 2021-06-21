@@ -3,31 +3,14 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from typing import Callable, Coroutine, Optional, Union
+from typing import Optional
 
 import dubious.raw as raw
+import dubious.payload as payload
 from dubious.Gateway import Gateway
 from dubious.types import Application, User
 
-class HandlesEvents:
-    handlers: dict[int, Callable[[raw.Payload], Coroutine]]
-
-    def __init__(self):
-        self.handlers = {}
-        for attrName in dir(self):
-            attr = self.__getattribute__(attrName)
-            if not callable(attr): continue
-            if attrName in raw.EVENT.__dict__:
-                self.handlers[raw.EVENT.__dict__[attrName]] = attr
-    
-    def getHandler(self, t: str):
-        if not t in raw.EVENT.__dict__.values():
-            raise Exception(f"{t} is not a valid event.")
-        if not t in self.handlers:
-            raise NotImplementedError()
-        return self.handlers[t]
-
-class Client(HandlesEvents):
+class Client(payload.HandlesEvents):
     def __init__(self, token: str, intents: int, gateway: Gateway):
         super().__init__()
         # The client's secret.
@@ -52,8 +35,8 @@ class Client(HandlesEvents):
         self.gatewayVersion: Optional[int] = None
         self.user: Optional[User] = None
         self.sessionID: Optional[str] = None
-        self.application: Optional[Application] = None
-        self.rawGuilds: Optional[list[raw.UnavailableGuild]] = None
+        self.partialApplication: Optional[Application] = None
+        self.rawGuilds: Optional[list[payload.RawUnavailableGuild]] = None
 
         self.handlers = {**self.handlers,
             1: self.onBeat,
@@ -69,10 +52,11 @@ class Client(HandlesEvents):
             Starts the Gateway's loops.
             Runs the asyncio loop forever. """
         loop = asyncio.get_event_loop()
+        self.gateway.start(loop)
         loop.create_task(self.loopRecv())
         loop.create_task(self.loopBeat())
-        self.gateway.start(loop)
-        asyncio.run(self.gateway.connect())
+
+        loop.run_forever()
     
     async def recv(self):
         payload = await self.gateway.recv()
@@ -94,7 +78,6 @@ class Client(HandlesEvents):
     async def loopRecv(self):
         while True:
             await self.recv()
-            
         
     async def beat(self):
         await self.beating.wait()
@@ -117,7 +100,7 @@ class Client(HandlesEvents):
         """ Callback for opcode 9. """
         await self.reconnect()
     
-    async def onHello(self, payload: raw.Hello):
+    async def onHello(self, payload: payload.Hello):
         """ Callback for opcode 10.
             Sets the heartbeat interval and unblocks the heartbeat loop.
             Sends a heartbeat payload, then waits to send an identify payload."""
@@ -133,26 +116,38 @@ class Client(HandlesEvents):
         print("beat acknowledged")
         self.beatAcked.set()
     
-    async def onReady(self, payload: raw.Ready):
+    async def onReady(self, payload: payload.Ready):
         """ Callback for event READY.
             Stores the client's User object, the session ID, the client's Application object, and the incomplete Guild objects.
             Sets the ready flag. """
         self.gatewayVersion = payload["v"]
         self.user = User(payload["user"])
         self.sessionID = payload["session_id"]
-        self.application = Application(payload["application"])
+        self.partialApplication = payload["application"]
         self.rawGuilds = payload["guilds"]
         self.ready.set()
     
-    async def onResumed(self, _):
+    async def onResumed(self, _: payload.Resumed):
         """ Callback for event RESUMED.
             Sets the ready flag. """
         self.ready.set()
     
-    async def onReconnect(self, _):
+    async def onReconnect(self, _: payload.Reconnect):
         """ Callback for event RECONNECT.
             Calls the reconnect routine. """
         await self.reconnect()
+    
+    async def onInvalidSession(self, reconnectable: payload.InvalidSession):
+        """ Callback for event INVALID_SESSION.
+            If the recieved value was true, attempt to reconnect. """
+        if reconnectable:
+            await self.reconnect()
+        
+    async def onGuildCreate(self, guild: payload.GuildCreate):
+        """ Callback for event GUILD_CREATE.
+            Stores the guild in the client's cache. """
+        
+        
     
     async def sendBeat(self):
         """ Sends a heartbeat payload. """

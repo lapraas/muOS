@@ -12,29 +12,34 @@ class Snowflake:
 
 class User:
     def __init__(self, raw: RawUser):
-        print(f"making user from {raw}")
-        self.id = Snowflake(raw["id"])
-        print("made id")
+        self.id = raw["id"]
         self.username = raw["username"]
         self.discriminator = raw["discriminator"]
         self.avatar = raw["avatar"]
-        self.isBot = raw["bot"]
-        self.usesTwoFactor = raw["mfa_enabled"]
-        self.isVerified = raw["verified"]
-        self.email = raw["email"]
-        self.flags = raw["flags"]
-        
-        self.system = raw["system"]
-        self.locale = raw["locale"]
-        self.premiumType = raw["premium_type"]
-        self.publicFlags = raw["public_flags"]
+
+        self.isBot = raw.get("bot")
+        self.usesTwoFactor = raw.get("mfa_enabled")
+        self.isVerified = raw.get("verified")
+        self.email = raw.get("email")
+        self.flags = raw.get("flags")
+        self.system = raw.get("system")
+        self.locale = raw.get("locale")
+        self.premiumType = raw.get("premium_type")
+        self.publicFlags = raw.get("public_flags")
+
+        self.id = Snowflake(self.id)
 
 class Application:
     def __init__(self, raw: RawApplication):
-        self.id = Snowflake(raw["id"])
+
+        self.id = raw["id"]
         self.name = raw["name"]
         self.icon = raw["icon"]
         self.description = raw["description"]
         self.isPublic = raw["bot_public"]
         self.requiresAuth = raw["bot_require_code_grant"]
-        self.owner = User(raw["owner"])
+        
+        self.owner = raw.get("owner")
+
+        self.id = Snowflake(self.id)
+        self.owner = User(self.owner) if self.owner else None

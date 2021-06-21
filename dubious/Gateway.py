@@ -29,16 +29,19 @@ class Gateway:
         self.closedTask = loop.create_task(self.loopClosed())
         self.recvTask = loop.create_task(self.loopRecv())
         self.sendTask = loop.create_task(self.loopSend())
+        loop.create_task(self.connect())
     
     async def connect(self):
         self.ws = await client.connect(self.uri)
         self.started.set()
     
     async def loopClosed(self):
+        await self.started.wait()
         await self.ws.wait_closed()
         printWithTime("websocket closed\n" + f"  code: {self.ws.close_code}" + "\n" + f"  reason: {self.ws.close_reason}")
     
     async def loopRecv(self):
+        await self.started.wait()
         while self.started.is_set():
             data = await self.ws.recv()
             payload: Payload = json.loads(data)
@@ -47,6 +50,7 @@ class Gateway:
             print("put into recvQ")
 
     async def loopSend(self):
+        await self.started.wait()
         while self.started.is_set():
             payload = await self.sendQ.get()
             data = json.dumps(payload)
@@ -62,10 +66,10 @@ class Gateway:
     
     async def stop(self, code=1000):
         self.started.clear()
-        await self.closedTask
         await self.recvTask
         await self.sendTask
         await self.ws.close(code)
+        await self.closedTask
 
     async def restart(self):
         await self.stop()
