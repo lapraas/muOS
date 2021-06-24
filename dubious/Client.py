@@ -8,7 +8,7 @@ from typing import Optional
 import dubious.raw as raw
 import dubious.payload as payload
 from dubious.Gateway import Gateway
-from dubious.types import Application, User
+from dubious.types import Guild, User
 
 class Client(payload.HandlesEvents):
     def __init__(self, token: str, intents: int, gateway: Gateway):
@@ -19,6 +19,8 @@ class Client(payload.HandlesEvents):
         self.intents = intents
         # The connection to the websocket through which to recieve and request information.
         self.gateway = gateway
+
+        self.stopped = asyncio.Event()
 
         # The time between heartbeats in milliseconds.
         self.beatTime: Optional[int] = None
@@ -35,8 +37,9 @@ class Client(payload.HandlesEvents):
         self.gatewayVersion: Optional[int] = None
         self.user: Optional[User] = None
         self.sessionID: Optional[str] = None
-        self.partialApplication: Optional[Application] = None
-        self.rawGuilds: Optional[list[payload.RawUnavailableGuild]] = None
+        self.unavailableGuilds: Optional[list[payload.RawUnavailableGuild]] = None
+
+        self.guilds: dict[int, raw.RawGuild] = {}
 
         self.handlers = {**self.handlers,
             1: self.onBeat,
@@ -47,51 +50,75 @@ class Client(payload.HandlesEvents):
 
         self.beatAcked.set()
 
+    ###
+    # Asyncio stuff
+    ###
+
     def start(self):
         """ Starts the listen loop and the beat loop for the Client.
             Starts the Gateway's loops.
             Runs the asyncio loop forever. """
-        loop = asyncio.get_event_loop()
-        self.gateway.start(loop)
-        loop.create_task(self.loopRecv())
-        loop.create_task(self.loopBeat())
-
-        loop.run_forever()
-    
-    async def recv(self):
-        payload = await self.gateway.recv()
-        op = payload["op"]
-        t = payload["t"]
-        self.sequence = payload["s"] if payload["s"] != None else self.sequence
-        d = payload["d"]
-        if t:
-            handler = self.getHandler(t)
-        else:
-            handler = self.handlers.get(op)
-        if handler:
-            print(f"[Client] calling handler for {op}:{t}")
-            await handler(d)
-            print("[Client] done with handler")
-        else:
-            raise NotImplementedError()
+        try:
+            loop = asyncio.get_event_loop()
+            self.gateway.start(loop)
+            taskRecv = loop.create_task(self.loopRecv())
+            taskBeat = loop.create_task(self.loopBeat())
+            loop.run_forever()
+        except KeyboardInterrupt:
+            print("Interrupted, stopping tasks")
+            self.stopped.set()
+            for task in asyncio.all_tasks(loop):
+                print(task)
+            loop.run_until_complete(self.gateway.stop())
+            loop.run_until_complete(taskRecv)
+            loop.run_until_complete(taskBeat)
+        finally:
+            loop.close()
+            print("Done")
     
     async def loopRecv(self):
-        while True:
-            await self.recv()
-        
-    async def beat(self):
-        await self.beating.wait()
-        await asyncio.sleep(self.beatTime / 1000)
-        if self.beatAcked.is_set():
-            self.beatAcked.clear()
-            await self.sendBeat()
-        else:
-            await self.reconnect()
+        while not self.stopped.is_set():
+            try:
+                payload = await asyncio.wait_for(self.gateway.recv(), timeout=1)
+            except asyncio.TimeoutError:
+                continue
+            op = payload["op"]
+            t = payload["t"]
+            self.sequence = payload["s"] if payload["s"] != None else self.sequence
+            d = payload["d"]
+            if t:
+                handler = self.getHandler(t)
+            else:
+                handler = self.handlers.get(op)
+            if handler:
+                await handler(d)
+            else:
+                print(f"Not implemented: {t}")
         
     async def loopBeat(self):
-        while True:
-            await self.beat()
+        while not self.stopped.is_set():
+            try:
+                await asyncio.wait_for(self.beating.wait(), timeout=1)
+            except asyncio.TimeoutError:
+                continue
+            _, toCancel = await asyncio.wait({
+                asyncio.sleep(self.beatTime / 1000),
+                self.stopped.wait()
+            }, return_when=asyncio.FIRST_COMPLETED)
+            for task in toCancel:
+                task.cancel()
+            if self.stopped.is_set():
+                continue
+            if self.beatAcked.is_set():
+                self.beatAcked.clear()
+                await self.sendBeat()
+            else:
+                await self.reconnect()
     
+    ###
+    # Callbacks
+    ###
+
     async def onBeat(self, _):
         """ Callback for opcode 1. """
         await self.sendBeat()
@@ -113,7 +140,6 @@ class Client(payload.HandlesEvents):
     async def onBeatAck(self, _):
         """ Callback for opcode 11.
             Sets a flag that the last heartbeat was acknowledged. """
-        print("beat acknowledged")
         self.beatAcked.set()
     
     async def onReady(self, payload: payload.Ready):
@@ -123,8 +149,7 @@ class Client(payload.HandlesEvents):
         self.gatewayVersion = payload["v"]
         self.user = User(payload["user"])
         self.sessionID = payload["session_id"]
-        self.partialApplication = payload["application"]
-        self.rawGuilds = payload["guilds"]
+        self.unavailableGuilds = payload["guilds"]
         self.ready.set()
     
     async def onResumed(self, _: payload.Resumed):
@@ -143,12 +168,16 @@ class Client(payload.HandlesEvents):
         if reconnectable:
             await self.reconnect()
         
-    async def onGuildCreate(self, guild: payload.GuildCreate):
+    async def onGuildCreate(self, guild: raw.RawGuild):
         """ Callback for event GUILD_CREATE.
             Stores the guild in the client's cache. """
+        guild = Guild(guild)
+        print(f"got guild {guild.name}")
         
-        
-    
+    ###
+    # Payload sending
+    ###
+
     async def sendBeat(self):
         """ Sends a heartbeat payload. """
         await self.gateway.send({

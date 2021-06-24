@@ -2,6 +2,10 @@
 from __future__ import annotations
 from typing import Optional, TypedDict, Union
 
+class PayloadData:
+    def __init__(self):
+        pass
+
 RawSnowflake = str
 class RawUser(TypedDict):
     # guaranteed
@@ -322,7 +326,126 @@ class RawGuild(TypedDict):
 
 class RawUserWithPartialMember(RawUser):
     pass
+
+class RawAttachment(TypedDict):
+    # guaranteed
+    id: RawSnowflake
+    filename: str
+    size: int
+    url: str
+    proxy_url: str
+
+    # not guaranteed
+    content_type: str
+    height: Optional[int]
+    width: Optional[int]
+
+class RawEmbedFooter(TypedDict):
+    # guaranteed
+    text: str
+
+    # not guaranteed
+    icon_url: str
+    proxy_icon_url: str
+
+class RawEmbedMedia(TypedDict):
+    # not guaranteed
+    url: str
+    proxy_url: str
+    height: int
+    width: int
+
+class RawEmbedProvider(TypedDict):
+    # not guaranteed
+    name: str
+    url: str
+
+class RawEmbedAuthor(TypedDict):
+    # not guaranteed
+    name: str
+    url: str
+    icon_url: str
+    proxy_icon_url: str
+
+class RawEmbedField(TypedDict):
+    # guaranteed
+    name: str
+    value: str
+
+    # not guaranteed
+    inline: bool
+
+class RawEmbed(TypedDict):
+    # not guaranteed
+    title: str
+    type: str
+    description: str
+    url: str
+    timestamp: str
+    color: int
+    footer: RawEmbedFooter
+    image: RawEmbedMedia
+    thumbnail: RawEmbedMedia
+    video: RawEmbedMedia
+    provider: RawEmbedProvider
+    author: RawEmbedAuthor
+    fields: list[RawEmbedField]
+
+class RawChannelMention(TypedDict):
+    # guaranteed
+    id: RawSnowflake
+    guild_id: RawSnowflake
+    type: int
+    name: str
+
+class RawReaction(TypedDict):
+    # guaranteed
+    count: int
+    me: bool
+    emoji: RawEmoji
+
+class RawMessageActivity(TypedDict):
+    # guaranteed
+    type: int
+
+    # not guaranteed
+    party_id: str
+
+class RawMessageReference(TypedDict):
+    # not guaranteed
+    message_id: RawSnowflake
+    channel_id: RawSnowflake
+    guild_id: RawSnowflake
+    fail_if_not_exists: bool
+
+class RawSticker(TypedDict):
+    # guaranteed
+    id: RawSnowflake
+    name: str
+    description: str
+    tags: str
+    format_type: int
+
+    # not guaranteed
+    pack_id: RawSnowflake
+    available: bool
+    guild_id: RawSnowflake
+    user: RawUser
+    sort_value: int
+
+class RawMessageComponent(TypedDict):
+    # guaranteed
+    type: int
+
+    # not guaranteed
+    style: int
+    label: str
+    emoji: RawEmoji
+    custom_id: str
+    url: str
+    disabled: bool
     
+    components: list[RawMessageComponent]
 
 class RawMessage(TypedDict):
     # guaranteed
@@ -356,4 +479,4 @@ class RawMessage(TypedDict):
     stickers: list[RawSticker]
     referenced_message: Optional[RawMessage]
     thread: RawChannel
-    components: list[RawMessageComponents]
+    components: list[RawMessageComponent]

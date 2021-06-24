@@ -6,7 +6,7 @@ from typing import Optional
 
 from websockets import client
 
-from dubious.raw import Payload
+from dubious.payload import Payload
 
 GATEWAY_URI = "wss://gateway.discord.gg/?v=9&encoding=json"
 
@@ -26,9 +26,9 @@ class Gateway:
         self.sendTask: Optional[asyncio.Task] = None
     
     def start(self, loop: asyncio.AbstractEventLoop):
-        self.closedTask = loop.create_task(self.loopClosed())
         self.recvTask = loop.create_task(self.loopRecv())
         self.sendTask = loop.create_task(self.loopSend())
+        self.closedTask = loop.create_task(self.loopClosed())
         loop.create_task(self.connect())
     
     async def connect(self):
@@ -43,22 +43,26 @@ class Gateway:
     async def loopRecv(self):
         await self.started.wait()
         while self.started.is_set():
-            data = await self.ws.recv()
+            try:
+                data = await asyncio.wait_for(self.ws.recv(), timeout=1)
+            except asyncio.TimeoutError:
+                continue
             payload: Payload = json.loads(data)
             printWithTime(f"R: {payload}")
             await self.recvQ.put(payload)
-            print("put into recvQ")
 
     async def loopSend(self):
         await self.started.wait()
         while self.started.is_set():
-            payload = await self.sendQ.get()
+            try:
+                payload = await asyncio.wait_for(self.sendQ.get(), timeout=1)
+            except asyncio.TimeoutError:
+                continue
             data = json.dumps(payload)
             printWithTime(f"S: {payload}")
             await self.ws.send(data)
     
     async def recv(self):
-        print("[Gateway] recv called")
         return await self.recvQ.get()
     
     async def send(self, payload: Payload):

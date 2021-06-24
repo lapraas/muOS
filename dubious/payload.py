@@ -82,9 +82,7 @@ class HandlesEvents:
     def getHandler(self, t: str):
         if not t in EVENT.__dict__.values():
             raise Exception(f"{t} is not a valid event.")
-        if not t in self.handlers:
-            raise NotImplementedError()
-        return self.handlers[t]
+        return self.handlers.get(t)
 
 class Hello(TypedDict):
     heartbeat_interval: int
