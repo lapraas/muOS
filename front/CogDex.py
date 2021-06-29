@@ -195,6 +195,7 @@ class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
             if not matches:
                 raise Fail(D.ERR.NO_MODE(query, [m.getName() for m in MODES]))
         else:
+            # Otherwise, run the mode search routine.
             matches = self.modeSearch(mode, qualifiersStr.lower().strip(), modifs, query)
         if not matches:
             await ctx.send(D.INFO.NO_MATCH(query))
@@ -220,16 +221,17 @@ class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
     
     def modeSearch(self, mode: BaseMode, qualifiersStr: str, modifiers: list[str], query: str):
         matches = set()
-        # If we do have a mode, get the dex from the mode.
+        # If we do have a mode, get the dex to collect from from the mode.
         dex = mode.getDex()
 
         for modifierStr in modifiers:
+            # Validate each modifier from the list of modifiers.
             modifier = mode.getModifier(modifierStr)
             if not modifier:
                 raise Fail(D.ERR.BAD_MODIFIER(query, modifierStr, mode.getName(), [m.getName() for m in mode.getModifiers()]))
             key = modifier.getKey()
-            extraMatches = dex.collect(key)
-            matches |= extraMatches
+            # Update the collected items.
+            matches |= dex.collect(key)
         
         # The attributes each matched item must have.
         qualifier: Optional[Qualifier] = None
@@ -246,7 +248,9 @@ class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
             if not qualifierStr: continue
             # Split by the first space - the first word of the qualifier string can be the qualifier mode.
             split = spacePat.split(qualifierStr, 1)
-            # We want to be able to use the same qualifier mode if none exists after the first.
+            # We want to be able to use the same qualifier mode as last time for instances like 
+            #  `mew.query pokemon with moves Tri Attack, Tackle`,
+            #  where both Tri Attack and Tackle will be treated as move searches.
             if mode.getQualifier(split[0]):
                 qualifier = mode.getQualifier(split[0])
                 rest = split[1]
@@ -256,6 +260,7 @@ class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
             if not qualifier: raise Fail(D.ERR.NO_EXTRA_MODE(query, qualifierStr))
             key = qualifier.getKey()(rest)
             extraMatches = dex.collect(key)
+            # Check whether or not we're supposed to be adding all matches or intersecting with existing matches.
             if op == "or" or not op or not matches:
                 matches |= extraMatches
             else:
@@ -276,14 +281,18 @@ class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
         if not targetMovesStrs:
             raise Fail(D.ERR.NO_MOVES)
 
-        shuffled = shuffleWord(targetPkmnStr.lower())
-        targetPkmn = POKEDEX.searchByNames(shuffled)
+        targetPkmn = POKEDEX.get(targetPkmnStr.lower())
+        if not targetPkmn:
+            shuffled = shuffleWord(targetPkmnStr.lower())
+            targetPkmn = POKEDEX.searchByNames(shuffled)
         if not targetPkmn:
             raise Fail(D.ERR.PKMN_NOT_FOUND(targetPkmnStr))
         targetMoves: list[Move] = []
         for moveStr in targetMovesStrs:
-            shuffled = shuffleWord(moveStr.lower())
-            move = MOVEDEX.searchByNames(shuffled)
+            move = MOVEDEX.get(moveStr.lower())
+            if not move:
+                shuffled = shuffleWord(moveStr.lower())
+                move = MOVEDEX.searchByNames(shuffled)
             if not move:
                 raise Fail(D.ERR.MOVE_NOT_FOUND(moveStr))
             targetMoves.append(move)
@@ -297,7 +306,9 @@ class CogDex(commands.Cog, name=D.COG.NAME, description=D.COG.DESC):
                 learnedMove = None
                 for prevoName in targetPkmn.getPrevolutions():
                     prevo = POKEDEX.get(prevoName)
-                    if prevo.hasMove(move):
+                    if not prevo:
+                        print(prevoName)
+                    elif prevo.hasMove(move):
                         learnedMove = prevo.getMove(move.getName()).getNewWithPrevo(prevo.dispName())
                         results.append(learnedMove)
                 if not learnedMove:

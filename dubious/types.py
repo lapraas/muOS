@@ -1,7 +1,6 @@
 
-from typing import Optional
-from dubious.raw import RawApplication, RawGuild, RawRole, RawSnowflake, RawUser
-
+from typing import Optional, TypedDict
+from dubious.raw import RawApplication, RawGuild, RawMessage, RawRole, RawSnowflake, RawUser
 
 class Snowflake:
     def __init__(self, raw: RawSnowflake):
@@ -13,6 +12,14 @@ class Snowflake:
     
     def __repr__(self):
         return self.value
+    
+    def __hash__(self):
+        return hash(self.value)
+    
+    def __eq__(self, o: object) -> bool:
+        if not isinstance(o, Snowflake):
+            return False
+        return o.value == self.value
 
 class User:
     def __init__(self, raw: RawUser):
@@ -53,3 +60,22 @@ class Guild:
         self.ownerID = Snowflake(self.ownerID)
         self.roles = [Role(rawRole) for rawRole in self.roles]
         self.systemChannelID = Snowflake(self.systemChannelID) if self.systemChannelID else self.systemChannelID
+
+class Message:
+    def __init__(self, raw: RawMessage):
+
+        self.id = raw["id"]
+        self.channelID = raw["channel_id"]
+        self.author = raw["author"]
+        self.content = raw["content"]
+        self.timestamp = raw["timestamp"]
+        self.lastEditTimestamp = raw["edited_timestamp"]
+        self.attachments = raw["attachments"]
+        self.embeds = raw["embeds"]
+        self.type = raw["type"]
+
+        self.webhookID = raw.get("webhook_id")
+
+        self.id = Snowflake(self.id)
+        self.channelID = Snowflake(self.id)
+        self.webhookID = Snowflake(self.webhookID)
