@@ -23,7 +23,7 @@ class CogMod(commands.Cog, name=M.COG.NAME, description=M.COG.DESCRIPTION):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.oldEntries: dict[int, dict[int, MiniEntry]] = {}
-        self.deleteIgnores: set[int] = {}
+        self.deleteIgnores: set[int] = set()
 
         self.setup()
     
@@ -32,6 +32,7 @@ class CogMod(commands.Cog, name=M.COG.NAME, description=M.COG.DESCRIPTION):
     
     async def getNewEntries(self, guild: discord.Guild) -> dict[int, MiniEntry]:
         
+        # set an arbitrary number of audit log entries to go through before stopping
         timeout = 300
         newDeleteEntries: dict[int, MiniEntry]  = {}
         entry: discord.AuditLogEntry
@@ -39,8 +40,10 @@ class CogMod(commands.Cog, name=M.COG.NAME, description=M.COG.DESCRIPTION):
             timeout -= 1
             if timeout <= 0:
                 break
+            # we don't care about anything except message delete actions
             if not entry.action == discord.AuditLogAction.message_delete: continue
             
+            # add the entry as a MiniEntry object to the collection of delete entries
             newDeleteEntries[entry.id] = MiniEntry(entry.user.id, entry.target.id, entry.extra.count)
         return newDeleteEntries
     
@@ -53,33 +56,46 @@ class CogMod(commands.Cog, name=M.COG.NAME, description=M.COG.DESCRIPTION):
                 print(f"Missing permission to view audit logs in {guild.name}")
             
     async def onMessageDelete(self, message: discord.Message):
+        # we want to ignore the deletion of
         if message.id in self.deleteIgnores:
+            # messages that the bot is supposed to ignore (tupper messages and such),
             self.deleteIgnores.discard(message.id)
             return
         if (
+            # direct messages,
             isinstance(message.channel, discord.DMChannel) or
+            # messages in guilds that don't have a log channel set up,
             not message.guild.id in LOG_CHANNEL_IDS or
+            # messages from the bot,
             message.author.id == self.bot.user.id or
+            # messages that start with the bot's prefix
             message.content.startswith(determinePrefix(None, message))
         ):
             return
         
+        # organize the audit log entries for the message's guild
         oldEntries = self.oldEntries[message.guild.id]
-        newEntries = await CogMod.getNewEntries(message.guild)
+        newEntries = await self.getNewEntries(message.guild)
         
         retrievedDeleterID: Optional[int] = None
         for newID in newEntries:
             newEntry = newEntries[newID]
+            # we only care about MiniEntry objects that have the same owner of the
+            #  deleted message as the message that triggered this callback
             if not newEntry.targetUserID == message.author.id: continue
             
+            # if the entry was processed in an earlier `getNewEntries` call,
             if newID in oldEntries:
+                # we need to check if this message deletion has ticked that entry's count up
                 oldEntry = oldEntries[newID]
                 if newEntry.count == oldEntry.count + 1:
                     retrievedDeleterID = newEntry.userID
                     break
             else:
+                # otherwise, it's a new deletion, and things are easy
                 retrievedDeleterID = newEntry.userID
                 break
+        
         if retrievedDeleterID != None and retrievedDeleterID != message.author.id:
             deleter: discord.Member = await message.guild.fetch_member(retrievedDeleterID)
             

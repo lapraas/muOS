@@ -32,9 +32,6 @@ class CogRoleplay(commands.Cog):
                     self.webhooks[channelID] = webhook
                     print(f"Found existing webhook for RP channel `{channel.name}`.")
                     break
-            if not self.webhooks.get(channelID):
-                self.webhooks[channelID] = await channel.create_webhook(name=_webhookName)
-                print(f"Created new webhook for RP channel `{channel.name}`.")
     
     def _listenTo(self, message: discord.WebhookMessage):
         self.listen.add(message.id)
@@ -62,23 +59,22 @@ class CogRoleplay(commands.Cog):
         return newMessage
     
     async def onMessage(self, message: discord.Message):
-        pass
-        #if not message.author.bot:
-        #    res = TUPPER_LISTS.match(message.author.id, message.content)
-        #    if not isinstance(res, tuple): return
-        #    tupper, emote = res
-#
-        #    self.cogMod.addDeleteIgnore(message.id)
-        #    await message.delete()
-        #    content: str = message.content
-        #    content = content.removeprefix(emote.getPrefix()).removesuffix(emote.getSuffix())
-        #    webhook = self.webhooks[message.channel.id]
-        #    await webhook.send(content, username=tupper.getName(), avatar_url=emote.getURL())
+        if not message.author.bot:
+            tupper = NPC_LIST.match(message.content)
+            if not tupper: return
+
+            self.cogMod.addDeleteIgnore(message.id)
+            await message.delete()
+            webhook = self.webhooks.get(message.channel.id)
+            if not webhook:
+                self.webhooks[message.channel.id] = await message.channel.create_webhook(name=_webhookName)
+                print(f"Created new webhook for RP channel `{message.channel.name}`.")
+                
+            await webhook.send(tupper.removePrefixFrom(message.content), username=tupper.getName(), avatar_url=tupper.getImage())
     
     async def onReaction(self, message: discord.Message, emoji: str, user: Union[discord.User, discord.Member]):
         if not user.bot and message.author.id == self.bot.user.id:
             if emoji == "❌":
-                self.listen.discard(message.id)
                 await message.delete()
                 return
             else:
@@ -102,16 +98,20 @@ class CogRoleplay(commands.Cog):
     
     @commands.command(**R.NEW_NPC.meta)
     @commands.check(IDS.dmCheck)
-    async def newNPC(self, *, args: str):
+    async def newNPC(self, ctx: Ctx, *, args: str):
         split = args.split(";", 1)
         if len(split) != 2: raise Fail(R.NEW_NPC.BAD_ARGS(len(split)))
-        name, link = split
+        name, link = [part.strip() for part in split]
         
-        if not re.match(link): raise Fail(R.NEW_NPC.BAD_LINK)
+        if not linkRe.match(link): raise Fail(R.NEW_NPC.BAD_LINK)
 
         res = NPC_LIST.add(name, link)
         if not res: raise Fail(R.NEW_NPC.EXISTS(name))
+        else: await ctx.send(R.NEW_NPC.SUCCESS(name))
     
+    @commands.command(**R.RM_NPC.meta)
     @commands.check(IDS.dmCheck)
-    async def rmNPC(self, *, name: str):
+    async def rmNPC(self, ctx: Ctx, *, name: str):
         res = NPC_LIST.remove(name)
+        if not res: raise Fail(R.RM_NPC.NOT_FOUND(name))
+        else: await ctx.send()

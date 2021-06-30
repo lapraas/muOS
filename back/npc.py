@@ -1,5 +1,6 @@
 
 
+from typing import Callable
 from back.jdict import JDict, JObj
 import re
 import discord
@@ -12,47 +13,55 @@ Ctx = commands.Context
 _rawNPC = tuple[str, str, str, str]
 
 class NPC(JObj[_rawNPC]):
+    _prefix: Callable[[str], str] = lambda name: f"npc {name.lower()}"
+
     name: str
     image: str
     descShort: str
     descLong: str
     
     def build(self, raw: _rawNPC):
-        self.name, self.image, self.descShort, self.descLong = raw
+        self.name, self.image = raw
 
     def serialize(self):
-        return (self.name, self.image, self.descShort, self.descLong)
+        return (self.name, self.image)#, self.descShort, self.descLong)
     
     def getName(self): return self.name
     def getImage(self): return self.image
 
     def setImage(self): return self.image
 
+    def removePrefixFrom(self, text: str):
+        return text.removeprefix(NPC._prefix(self.name))
+
 class NPCList(JDict[str, NPC]):
     path = "./sources/npcs.json"
     jObjClass = NPC
     
     def match(self, text: str):
-        return self.d.get(text.lower())
+        for name in self.d:
+            if text.lower().startswith(NPC._prefix(name)):
+                return self.get(name)
     
     def add(self, name: str, image: str):
-        if self.match(name):
+        if self.get(name):
             return False
-        newNPC = NPC(name=name, image=image)
+        newNPC = NPC((
+            name, image
+        ))
         self.d[name.lower()] = newNPC
         self.dump()
         return newNPC
     
     def remove(self, name: str):
-        npc = self.match(name)
-        if not npc:
+        if not self.get(name):
             return False
         removed = self.d.pop(name)
         self.dump()
         return removed
     
     def changeImage(self, name: str, image: str):
-        npc = self.match(name)
+        npc = self.get(name)
         if not npc:
             return False
         npc.setImage(image)

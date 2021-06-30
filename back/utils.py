@@ -112,6 +112,16 @@ class Page:
         self.embed = embed
 
 class Paginator:
+    pages: list[Page]
+    issuerID: int
+    ignoreIndex: bool
+    isDM: bool
+    length: int
+    focused: int
+    locked: bool
+    changing: bool
+    numbers: bool
+    
     def __init__(self, pages: list[Page], issuerID: int, *, ignoreIndex: bool, isDM: bool):
         self.pages = pages
         self.issuerID = issuerID
@@ -166,9 +176,6 @@ class Paginator:
         return reactions
     
     async def refocus(self, emoji: str, message: discord.Message):
-        if not self.isDM:
-            await message.clear_reaction(emoji)
-
         if emoji == U.emojiFirst:
             self.focused = 0
         elif emoji == U.emojiPrior and self.focused > 0:
@@ -232,11 +239,13 @@ async def updatePaginatedMessage(message: discord.Message, user: discord.User, p
     paginator.setChanging()
     oldFocused = paginator.getFocused()
     if emoji:
-        focused = paginator.refocus(emoji, message)
+        if not isinstance(message.channel, discord.DMChannel):
+            await message.remove_reaction(emoji, user)
+        focused = await paginator.refocus(emoji, message)
         if not oldFocused is focused:
             await message.edit(content=focused.content, embed=focused.embed)
     
-    newReactions = paginator.getReactions(message)
+    newReactions = paginator.getReactions()
     for reaction in newReactions:
         await message.add_reaction(reaction)
     paginator.unsetChanging()

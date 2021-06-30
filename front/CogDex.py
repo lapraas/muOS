@@ -128,7 +128,10 @@ MOVE = BaseMode(
     ["move", "moves", "learns", "learn"],
     Move, MOVEDEX, None,
     [
-
+        Qualifier(
+            ["type", "types"],
+            lambda targets: lambda pkmn: any(typ in targets for typ in pkmn.getTypes())
+        )
     ],
     [
 

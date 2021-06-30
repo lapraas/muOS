@@ -40,6 +40,8 @@ class Move(DexItem):
     def getTarget(self): return self.target
     def getPP(self): return self.pp
     def getGen(self): return self.gen
+
+    def getIsPhysical(self): return self.cls == "physical"
     
     def dispType(self): return self.typ.title()
     def dispDamageClass(self): return self.cls.title()

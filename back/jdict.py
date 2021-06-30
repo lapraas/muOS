@@ -34,6 +34,9 @@ class JDict(JObj, Generic[_K, _T]):
                 raw = {}
         return cls(raw)
     
+    def get(self, name: _K) -> _T:
+        return self.d.get(name)
+    
     def dump(self):
         raw = self.serialize()
         with open(self.path, "w") as f:
