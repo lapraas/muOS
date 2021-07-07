@@ -45,7 +45,7 @@ class Move(DexItem):
     def dispDamageClass(self): return self.cls.title()
     def dispEffect(self): return _effectReplacer.sub(str(self.effectChance), self.effect)
     def dispTarget(self): return self.target.title()
-    def getGen(self): return self.gen.title()
+    def dispGen(self): return self.gen.title()
 
 class Method:
     LEVEL = "level-up"
