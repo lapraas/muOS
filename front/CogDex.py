@@ -134,9 +134,7 @@ MOVE = BaseMode(
         )
     ],
     [
-        ModifierMode(
-            
-        )
+        
     ]
 )
 ABILITY = BaseMode(
