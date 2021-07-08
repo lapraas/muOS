@@ -4,22 +4,22 @@ from dubious.raw import RawApplication, RawGuild, RawMessage, RawRole, RawSnowfl
 
 class Snowflake:
     def __init__(self, raw: RawSnowflake):
-        self.value = int(raw)
-        self.timestamp = (self.value >> 22) + 1420070400000
-        self.workerID = (self.value & 0x3E0000) >> 17
-        self.processID = (self.value & 0x1F000) >> 12
-        self.increment = self.value & 0xFFF
+        self.id = int(raw)
+        self.timestamp = (self.id >> 22) + 1420070400000
+        self.workerID = (self.id & 0x3E0000) >> 17
+        self.processID = (self.id & 0x1F000) >> 12
+        self.increment = self.id & 0xFFF
     
     def __repr__(self):
-        return self.value
+        return self.id
     
     def __hash__(self):
-        return hash(self.value)
+        return hash(self.id)
     
     def __eq__(self, o: object) -> bool:
         if not isinstance(o, Snowflake):
             return False
-        return o.value == self.value
+        return o.id == self.id
 
 class User:
     def __init__(self, raw: RawUser):

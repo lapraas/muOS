@@ -39,7 +39,7 @@ class Client(payload.HandlesEvents):
         self.sessionID: Optional[str] = None
         self.unavailableGuilds: Optional[list[payload.RawUnavailableGuild]] = None
 
-        self.guilds: dict[int, raw.RawGuild] = {}
+        self.guilds: dict[int, Guild] = {}
 
         self.handlers = {**self.handlers,
             1: self.onBeat,
@@ -105,6 +105,7 @@ class Client(payload.HandlesEvents):
                 asyncio.sleep(self.beatTime / 1000),
                 self.stopped.wait()
             }, return_when=asyncio.FIRST_COMPLETED)
+            task: asyncio.Task
             for task in toCancel:
                 task.cancel()
             if self.stopped.is_set():
@@ -173,6 +174,7 @@ class Client(payload.HandlesEvents):
             Stores the guild in the client's cache. """
         guild = Guild(guild)
         print(f"got guild {guild.name}")
+        self.guilds[guild.id] = guild
         
     ###
     # Payload sending
