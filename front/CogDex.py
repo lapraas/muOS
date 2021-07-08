@@ -125,7 +125,7 @@ POKEMON = BaseMode(
     ]
 )
 MOVE = BaseMode(
-    ["move", "moves", "learns", "learn"],
+    ["move", "moves"],
     Move, MOVEDEX, None,
     [
         Qualifier(
@@ -134,11 +134,13 @@ MOVE = BaseMode(
         )
     ],
     [
-
+        ModifierMode(
+            
+        )
     ]
 )
 ABILITY = BaseMode(
-    ["ability", "abilities", "has"],
+    ["ability", "abilities"],
     Ability, ABILITYDEX, None,
     [
 

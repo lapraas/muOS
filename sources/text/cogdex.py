@@ -133,8 +133,29 @@ def GET_PKMN_LIST_PAGES(title: str, pkmnList: list[Pokemon]):
     return pages
 
 def GET_MOVE_PAGES(move: Move):
-    move
+    return [{
+        "title": move.dispName(),
+        "url": f"https://pokemondb.net/move/{move.getName()}",
+        "description": move.dispEffect(),
+        "fields": [
+            ("Type", move.dispType(), True),
+            ("Class", move.dispDamageClass(), True),
+            ("Targets", move.dispTarget(), True)
+        ]
+    }]
 
+def GET_MOVE_LIST_PAGES(title: str, moves: list[Move]):
+    moves = sorted(moves, key=lambda move: move.dispName())
+    fields = [(EMPTY, "```\n"+"\n".join(move.dispName() for move in chunk)+"```", True) for chunk in chunks(moves, 10)]
+    pages = []
+    for chunk in chunks(fields, 3):
+        embed = dict(
+            title=title,
+            description=f"{len(moves)} results",
+            fields=chunk
+        )
+        pages.append(embed)
+    return pages
 
 def _resultHas(items: list[Union[LearnedMove, Move]]):
     return padItems(
