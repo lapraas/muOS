@@ -13,6 +13,9 @@ class Snowflake:
     def __repr__(self):
         return self.id
     
+    def __str__(self) -> str:
+        return str(self.id)
+    
     def __hash__(self):
         return hash(self.id)
     
@@ -21,9 +24,15 @@ class Snowflake:
             return False
         return o.id == self.id
 
-class User:
+class IDable:
+    def __init__(self, raw: dict):
+        self.id = Snowflake(raw["id"])
+
+class User(IDable):
     def __init__(self, raw: RawUser):
-        self.id = raw["id"]
+
+        super().__init__(raw)
+
         self.username = raw["username"]
         self.discriminator = raw["discriminator"]
         self.avatar = raw["avatar"]
@@ -31,12 +40,11 @@ class User:
         self.isBot = raw.get("bot")
         self.system = raw.get("system")
 
-        self.id = Snowflake(self.id)
-
-class Role:
+class Role(IDable):
     def __init__(self, raw: RawRole):
-        
-        self.id = raw["id"]
+
+        super().__init__(raw)
+
         self.name = raw["name"]
         self.color = raw["color"]
         self.hoist = raw["hoist"]
@@ -45,26 +53,25 @@ class Role:
         self.managed = raw["managed"]
         self.mentionable = raw["mentionable"]
 
-        self.id = Snowflake(self.id)
-
-class Guild:
+class Guild(IDable):
     def __init__(self, raw: RawGuild):
 
-        self.id = raw["id"]
+        super().__init__(raw)
+
         self.name = raw["name"]
         self.ownerID = raw["owner_id"]
         self.roles = raw["roles"]
         self.systemChannelID = raw["system_channel_id"]
-
-        self.id = Snowflake(self.id)
+        
         self.ownerID = Snowflake(self.ownerID)
         self.roles = [Role(rawRole) for rawRole in self.roles]
         self.systemChannelID = Snowflake(self.systemChannelID) if self.systemChannelID else self.systemChannelID
 
-class Message:
+class Message(IDable):
     def __init__(self, raw: RawMessage):
 
-        self.id = raw["id"]
+        super().__init__(raw)
+
         self.channelID = raw["channel_id"]
         self.author = raw["author"]
         self.content = raw["content"]
@@ -76,6 +83,5 @@ class Message:
 
         self.webhookID = raw.get("webhook_id")
 
-        self.id = Snowflake(self.id)
-        self.channelID = Snowflake(self.id)
+        self.channelID = Snowflake(self.channelID)
         self.webhookID = Snowflake(self.webhookID)

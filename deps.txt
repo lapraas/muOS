@@ -2,5 +2,5 @@ discord.py
 requests
 beautifulsoup4
 websockets
-nest_asyncio
 emoji
+aiohttp[speedups]
