@@ -1,6 +1,9 @@
 
-from typing import Optional, TypedDict
-from dubious.raw import RawApplication, RawGuild, RawMessage, RawRole, RawSnowflake, RawUser
+from typing import Generic, TypeVar
+
+import dubious.http as http
+from dubious.raw import  RawChannel, RawGuild, RawMessage, RawRole, RawSnowflake, RawUser
+
 
 class Snowflake:
     def __init__(self, raw: RawSnowflake):
@@ -26,7 +29,34 @@ class Snowflake:
 
 class IDable:
     def __init__(self, raw: dict):
+        self.raw = raw
+
         self.id = Snowflake(raw["id"])
+
+T = TypeVar("T", bound="IDable")
+class Cache(Generic[T]):
+    def __init__(self, itemType: type[T], endpoint: str, size=1000):
+        self.itemType = itemType
+        self.endpoint = endpoint
+        self.size = size
+
+        self.items: dict[Snowflake, T] = {}
+        self.earliest: list[Snowflake] = []
+    
+    def add(self, item: T):
+        self.earliest.append(item.id)
+        self.items[item.id] = item
+        while len(self.items) > self.size:
+            snowflake = self.earliest.pop(0)
+            self.items.pop(snowflake)
+        return item
+    
+    def get(self, snowflake: Snowflake):
+        gotten = self.items.get(snowflake)
+        if not gotten:
+            j = http.req(f"{self.endpoint}/{snowflake}")
+            gotten = self.add(self.itemType(j))
+        return gotten
 
 class User(IDable):
     def __init__(self, raw: RawUser):
@@ -84,4 +114,44 @@ class Message(IDable):
         self.webhookID = raw.get("webhook_id")
 
         self.channelID = Snowflake(self.channelID)
-        self.webhookID = Snowflake(self.webhookID)
+        self.webhookID = Snowflake(self.webhookID) if self.webhookID else self.webhookID
+
+class Channel(IDable):
+    TEXT = 0
+    DM = 1
+    VOICE = 2
+    GROUP_DM = 3
+    CATEGORY = 4
+    NEWS = 5
+    STORE = 6
+    NEWS_THREAD = 10
+    PUBLIC_THREAD = 11
+    PRIVATE_THREAD = 12
+    STAGE = 13
+
+    def __init__(self, raw: RawChannel):
+
+        super().__init__(raw)
+
+        self.type = raw["type"]
+
+        # guild channels
+        self.guildID = raw.get("guild_id")
+        self.position = raw.get("position")
+        self.name = raw.get("name")
+        self.categoryID = raw.get("parent_id")
+
+        # text channels
+        self.topic = raw.get("topic")
+        self.isNSFW = raw.get("nsfw")
+        self.slowModeLimit = raw.get("rate_limit_per_user")
+        
+        # voice channels
+        self.bitrate = raw.get("bitrate")
+        self.userLimit = raw.get("userLimit")
+
+        # DM channels
+        self.recipients = raw.get("recipients")
+        self.icon = raw.get("icon")
+        self.ownerID = raw.get("owner_id")
+        self.applicationID = raw.get("application_id")

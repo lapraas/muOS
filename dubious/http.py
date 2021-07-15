@@ -12,3 +12,6 @@ def req(endpoint: str):
 
 class ENDPOINTS:
     GUILD = "/guilds"
+    CHANNEL = "/channels"
+    USER = "/users"
+    MESSAGE = "/messages" # only to be used with CHANNEL endpoint
