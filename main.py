@@ -68,19 +68,20 @@ async def on_message_delete(message: discord.Message):
 @client.event
 async def on_reaction_add(reaction: discord.Reaction, user: Union[discord.User, discord.Member]):
     #print("on_reaction_add")
+    message = reaction.message
+    emoji = str(reaction.emoji)
     await onReaction(reaction.message, reaction.emoji, user)
     await cogRoleplay.onReaction(reaction.message, reaction.emoji, user)
 
 @client.event
 async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
-    """
-    print("on_raw_reaction_add")
+    print("raw rection add")
     if not payload.message_id in [message.id for message in client.cached_messages]:
+        print("raw rection add is actually doing things")
         user = await client.fetch_user(payload.user_id)
         channel = await client.fetch_channel(payload.channel_id)
         message = await channel.fetch_message(payload.message_id)
-        await handlePaginationReaction(message, payload.emoji, user)
-    """
+        await cogRoleplay.onReaction(message, payload.emoji, user)
 
 @client.event
 async def on_command_error(ctx: commands.Context, error: commands.CommandError):

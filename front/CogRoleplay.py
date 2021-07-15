@@ -73,8 +73,10 @@ class CogRoleplay(commands.Cog):
             await webhook.send(tupper.removePrefixFrom(message.content), username=tupper.getName(), avatar_url=tupper.getImage())
     
     async def onReaction(self, message: discord.Message, emoji: str, user: Union[discord.User, discord.Member]):
-        if not user.bot and message.author.id == self.bot.user.id:
+        if (not user.bot) and message.author.id == self.bot.user.id:
             if emoji == "❌":
+                print("why the fuck is it not deleting")
+                print(type(message))
                 await message.delete()
                 return
             else:
