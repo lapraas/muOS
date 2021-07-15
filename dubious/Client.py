@@ -3,12 +3,37 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from typing import Optional
+from typing import Generic, Optional, TypeVar
 
-import dubious.raw as raw
+import dubious.http as http
 import dubious.payload as payload
+import dubious.raw as raw
 from dubious.Gateway import Gateway
-from dubious.types import Guild, User
+from dubious.types import Guild, IDable, Message, Snowflake, User
+
+T = TypeVar("T", bound="IDable")
+class Cache(Generic[T]):
+    def __init__(self, itemType: type[T], endpoint: str, size=1000):
+        self.itemType = itemType
+        self.endpoint = endpoint
+        self.size = size
+
+        self.items: dict[Snowflake, T] = []
+        self.earliest: list[Snowflake] = set()
+    
+    def add(self, item: T):
+        self.earliest.append(item.id)
+        self.items[item.id] = item
+        while len(self.items) > self.size:
+            snowflake = self.earliest.pop(0)
+            self.items.pop(snowflake)
+    
+    def get(self, snowflake: Snowflake):
+        gotten = self.items.get(snowflake)
+        if not gotten:
+            j = http.req(f"{self.endpoint}/{snowflake}")
+            self.add(self.itemType(j))
+        return gotten
 
 class Client(payload.HandlesEvents):
     def __init__(self, token: str, intents: int, gateway: Gateway):
@@ -39,7 +64,7 @@ class Client(payload.HandlesEvents):
         self.sessionID: Optional[str] = None
         self.unavailableGuilds: Optional[list[payload.RawUnavailableGuild]] = None
 
-        self.guilds: dict[int, raw.RawGuild] = {}
+        self.guilds: dict[int, Guild] = {}
 
         self.handlers = {**self.handlers,
             1: self.onBeat,
@@ -67,8 +92,6 @@ class Client(payload.HandlesEvents):
         except KeyboardInterrupt:
             print("Interrupted, stopping tasks")
             self.stopped.set()
-            for task in asyncio.all_tasks(loop):
-                print(task)
             loop.run_until_complete(self.gateway.stop())
             loop.run_until_complete(taskRecv)
             loop.run_until_complete(taskBeat)
@@ -105,6 +128,7 @@ class Client(payload.HandlesEvents):
                 asyncio.sleep(self.beatTime / 1000),
                 self.stopped.wait()
             }, return_when=asyncio.FIRST_COMPLETED)
+            task: asyncio.Task
             for task in toCancel:
                 task.cancel()
             if self.stopped.is_set():
@@ -173,6 +197,14 @@ class Client(payload.HandlesEvents):
             Stores the guild in the client's cache. """
         guild = Guild(guild)
         print(f"got guild {guild.name}")
+        self.guilds[guild.id] = guild
+    
+    async def onMessageCreate(self, message: raw.RawMessage):
+        """ Callback for event MESSAGE_CREATE.
+            Stores the message in the bot's cache. """
+        message = Message(message)
+        print(f"got message {message.content}")
+        self.messages[message.id] = message
         
     ###
     # Payload sending
